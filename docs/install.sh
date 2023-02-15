@@ -137,51 +137,18 @@ change_tz(){
     TIMEZONE=${timezone:=TIMEZONE}
 }
 
-change_kb(){
-    # get a list of all keyboard files on the system
-    keymaps=$(find /usr/share/kbd/keymaps/ -type f -printf "%f\n" | sort -V)
-    # get the list into an array
-    keymaps=( $keymaps )
-
-    # status will be part of the menu list of kbd choices
+KeyboardLayout(){
+    layouts=( de fr gb ru us )
     status=""
-    # these will be menu options
     options=()
 
-    # only turn on us keymap for default
-    # Turns out I chose a --menu for whiptail and not a --radiolist
-    # but I keep this around in case I want to go back to a --radiolist
-    for file in "${keymaps[@]}"; do
-        if [[ "${file%%.*}" == 'us' ]]; then
-            status="ON"
-        else
-            status="OFF"
-        fi
-
-        # remove the suffix for the loadkeys command
-        newfile=$( echo $file | sed 's/.map.gz//g' )
-        # set up the line for the whiptail menu
-        options+=( $( printf "%s\t\t%s" $newfile "=====" ) )
+    for i in ${layouts[@]}; do
+        options+=( $( printf "%s\t\t%s" $i "=====" ) )
     done
 
-    # Ask the user if he/she wants to keep a us keymap
-    if (whiptail --backtitle "US KEYMAP?" --title "Do you want a US Keymap?" \
-        --yesno "Keep a US keyboard keymap?" 10 80) ; then
-        # Set default value for us in case setxkbmap doesn't work
-        KEYBOARD=${KEYBOARD:='us'}
-    else
-        # if not, there are about 260 other options...
-        KEYBOARD=$(eval resize; whiptail --backtitle "CHOOSE KEYBOARD" --title "Choose Your Keyboard" \
-            --menu "Default keymap is US"  $LINES $COLUMNS $(( $LINES - 8 )) "${options[@]}" 3>&1 1>&2 2>&3 )
-        # set default kb map to be us, incase above doesn't get set properly or user cancels
-        KEYBOARD=${KEYBOARD:='us'}
-    fi
+    KEYBOARD=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:"  30 70 20 "${options[@]}" 3>&1 1>&2 2>&3 )
 
-    echo "==> Using $KEYBOARD keyboard keymap..." &>>$LOGFILE
-
-    # Default value is 'us'; therefore load new value if we're not in US
-    # loadkeys is not persistent.  Only loads for current session
-    if [[ ! $KEYBOARD =~ 'us' ]] ; then loadkeys $KEYBOARD ; fi
+    loadkeys $KEYBOARD
 }
 
 # FIND GRAPHICS CARD
@@ -276,12 +243,6 @@ time_date(){
 
 # CHECK IF TASK IS COMPLETED
 check_tasks(){
-
-    # If task already exists in array return falsy
-    # Function takes a task number as an argument
-    # This function might not be needed anymore: STATUS TBD
-
-    # just return an 'X' in the array position of the passed integer parameter
     completed_tasks[$1]="X"
 }
 
@@ -1048,12 +1009,12 @@ add_user_acct(){
 ald_menu(){
     while true ; do
         menupick=$(whiptail --title "Arch Linux Desktop Installer" --menu "Your choice?" 30 70 20 \
-            "K"   "[$(echo ${completed_tasks[1]}]    Change keyboard keymap )"  \
-            "L"   "[$(echo ${completed_tasks[2]}]    Choose your TimeZone and Locale)"  \
-            "C"   "[$(echo ${completed_tasks[3]}]    Check connection and date)"  \
-            "D"   "[$(echo ${completed_tasks[4]}]    Prepare Installation Disk)"  \
-            "B"   "[$(echo ${completed_tasks[5]}]    Install Base System)"        \
-            "F"   "[$(echo ${completed_tasks[6]}]    New FSTAB and TZ/Locale)"    \
+            "Keyboard Layout" "Change keyboard keymap )"  \
+            "L"   "[$(echo ${completed_tasks[2]}] Choose your TimeZone and Locale)"  \
+            "C"   "[$(echo ${completed_tasks[3]}] Check connection and date)"  \
+            "D"   "[$(echo ${completed_tasks[4]}] Prepare Installation Disk)"  \
+            "B"   "[$(echo ${completed_tasks[5]}] Install Base System)"        \
+            "F"   "[$(echo ${completed_tasks[6]}] New FSTAB and TZ/Locale)"    \
             "H"   "[$(echo ${completed_tasks[7]}]    Set new hostname)"           \
             "R"   "[$(echo ${completed_tasks[8]}]    Set root password)"          \
             "M"   "[$(echo ${completed_tasks[9]}]    Install More network essentials)" \
@@ -1069,7 +1030,7 @@ ald_menu(){
 
         case $menupick in
 
-            "K")  change_kb; check_tasks 1 ;;
+            "Keyboard Layout") KeyboardLayout; ;;
 
             "L")  choose_locale; change_tz; check_tasks 2 ;;
 

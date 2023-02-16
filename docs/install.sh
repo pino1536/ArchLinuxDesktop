@@ -41,7 +41,7 @@ HOME_SIZE=''       # Takes up rest of drive
 
 # You can edit this if you want
 # For some reason the ubuntu geoip server doesn't always work
-TIMEZONE='America/New_York'
+TimeZone='America/New_York'
 LOCALE="en_US.UTF-8"
 KeyboardLayout="us"
 # Perhaps I will use this to determine a user's locale setting; I don't use it right now.
@@ -101,10 +101,6 @@ all_pkgs=( base_system base_essentials network_essentials basic_x extra_x1 extra
 
 # Can't show checkmarks very easily...  This array will help show the user which tasks are completed or not
 completed_tasks=( "X" )
-
-ald_start(){
-    whiptail --title "Arch Linux Desktop Installer" --msgbox "Test" 15 80 
-}
 
 TimeZone(){
     zone=$(whiptail --title "Time Zone" --menu "Select continent:" 30 70 20 \
@@ -973,8 +969,8 @@ add_user_acct(){
 ald_menu(){
     while true ; do
         menupick=$(whiptail --title "Arch Linux Desktop Installer" --menu "Your choice?" 30 70 20 \
-            "Keyboard Layout" "Change keyboard keymap" \
-            "Time Zone" "Change time zone"  \
+            "Keyboard Layout" "(${KeyboardLayout})" \
+            "Time Zone" "(${TimeZone})" \
             "C"   "[$(echo ${completed_tasks[3]}] Check connection and date)"  \
             "D"   "[$(echo ${completed_tasks[4]}] Prepare Installation Disk)"  \
             "B"   "[$(echo ${completed_tasks[5]}] Install Base System)"        \
@@ -996,7 +992,7 @@ ald_menu(){
 
             "Keyboard Layout") KeyboardLayout; ;;
 
-            "Time Zone") change_tz; ;;
+            "Time Zone") TimeZone; ;;
 
             "C")  check_connect; time_date; check_tasks 3 ;;
 

@@ -116,7 +116,9 @@ change_tz(){
         "Australia" "" \
         "Europe" "" \
         3>&1 1>&2 2>&3 )
-    for i in $(ls /usr/share/zoneinfo/$zone); do
+    subzonearray=$(ls /usr/share/zoneinfo/$zone)
+    subzonearray=( $subzonearray )
+    for i in "${subzonearray[@]}"; do
         subzonelist+=( $(printf "%s\t\t%s\n" $i "") )
     done
     subzone=$(eval `resize`; whiptail --title "Time Zone" --menu "Select city:" $LINES $COLUMNS $(( $LINES - 8 )) \

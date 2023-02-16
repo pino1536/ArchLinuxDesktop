@@ -43,7 +43,7 @@ HOME_SIZE=''       # Takes up rest of drive
 # For some reason the ubuntu geoip server doesn't always work
 TIMEZONE='America/New_York'
 LOCALE="en_US.UTF-8"
-KEYBOARD="us"
+KEYBOARD=""
 # Perhaps I will use this to determine a user's locale setting; I don't use it right now.
 EXT_IP=$( dig +short myip.opendns.com @resolver1.opendns.com )
 
@@ -107,47 +107,32 @@ ald_start(){
 }
 
 change_tz(){
-    # Offer user chance to select a new tz in case wget didn't work properly
-    backmessage="CHANGE TZ?"; message="Want to change TZ from $TIMEZONE?"
-    # whiptail --yesno dialog
-    if $(whiptail --backtitle "$backmessage" --title "$message" --yesno \
-        "Keep timezone of $TIMEZONE?" --yes-button "Keep $TIMEZONE" \
-        --no-button "Change timezone" 10 70 3>&1 1>&2 2>&3); then
-
-        timezone=${TIMEZONE}
-    
-    else
-
-        timezones=()
-        # populate array with possible TZ's
-        for timezone in $(timedatectl list-timezones); do
-            timezones+=( $(printf "%s\t\t%s\n" $timezone 'timezone') )
-        done
-
-        backmessage="CHOOSE YOUR TIMEZONE"
-        message="Please choose your timezone"
-
-        # Let user pick the timezone
-        timezone=$(eval `resize`; whiptail --backtitle "$backmessage" --title "$message" \
-            --menu "Here are your timezones:" $LINES $COLUMNS $(( $LINES - 8 )) \
-            "${timezones[@]}"  3>&1 1>&2 2>&3)
-    fi
-
-    # default to $TIMEZONE variable from auto_tz if the user cancels the previous form
-    TIMEZONE=${timezone:=TIMEZONE}
+    subzone=()
+    zone=$(whiptail --title "Time Zone" --menu "Select continent:" 30 70 20 \
+        "Africa" "" \
+        "America" "" \
+        "Antarctica" "" \
+        "Asia" "" \
+        "Australia" "" \
+        "Europe" "" \
+        3>&1 1>&2 2>&3 )
+    for i in $(ls /usr/share/zoneinfo/$zone); do
+        subzone+=( $(printf "%s\t\t%s\n" $timezone 'timezone') )
+    done
+    timezonx=$(eval `resize`; whiptail --title "Time Zone" --menu "Select city:" $LINES $COLUMNS $(( $LINES - 8 )) \
+        "${subzone[@]}" \
+        3>&1 1>&2 2>&3 )
+    TIMEZONE=$timezonx
 }
 
 KeyboardLayout(){
-    layouts=( de fr gb ru us )
-    status=""
-    options=()
-
-    for i in ${layouts[@]}; do
-        options+=( $( printf "%s\t\t%s" $i "=====" ) )
-    done
-
-    KEYBOARD=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:"  30 70 20 "${options[@]}" 3>&1 1>&2 2>&3 )
-
+    KEYBOARD=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 30 70 20 \
+        "de" "German" \
+        "fr" "France" \
+        "ru" "Russia" \
+        "uk" "Unitet Kindom" \
+        "us" "USA" \
+        3>&1 1>&2 2>&3 )
     loadkeys $KEYBOARD
 }
 
@@ -916,38 +901,16 @@ set_tz(){
         "HW CLOCK AND TIMEZONE SET to $TIMEZONE" --msgbox "$message" 8 78
 }
 
-choose_locale(){
-    locales=()
-
-    if $(whiptail --backtitle "KEEP LOCALE?" --title "Want to keep LOCALE as default en_US.UTF-8?" \
-        --yesno "Choose whether to keep default en_US.UTF-8" --yes-button "Keep en_US.UTF-8" \
-        --no-button "Change LOCALE" 20 80 3>&1 1>&2 2>&3 ); then
-
-        LOCALE=${LOCALE:="en_US.UTF-8"}
-    else
-        # Here's the array of available locales:
-        for locale in $(egrep '^#?[a-z]{2}_*' /etc/locale.gen | awk '{print $1}' | sed 's/^#//g'); do
-            locales+=( $(printf "%s\t\t%s\n" $locale "Locale")  )
-        done
-        # whiptail selection menu of all available locales on system
-        LOCALE=$(eval `resize`; whiptail --backtitle "CHOOSE LOCALE" --title "Choose Your Locale" \
-            --menu "Default Locale is en_US.UTF-8" $LINES $COLUMNS $(( $LINES - 8 )) "${locales[@]}" 3>&1 1>&2 2>&3 )
-    fi
-
-    LOCALE=${LOCALE:="en_US.UTF-8"}
-
-}
-
 # LOCALE
 set_locale(){
 
-    LOCALE=${LOCALE:="en_US.UTF-8"}
-    sleep 2
+    LOCALE="en_US.UTF-8"
+
     arch-chroot /mnt sed -i "s/#$LOCALE/$LOCALE/g" /etc/locale.gen
     arch-chroot /mnt locale-gen   &>>$LOGFILE
 
-    echo "LANG=$LOCALE" > /mnt/etc/locale.conf 
-    export LANG="$LOCALE"
+    echo "LANG=en_US.UTF-8" > /mnt/etc/locale.conf 
+    export LANG="en_US.UTF-8"
 
     result=$(cat /mnt/etc/locale.conf)
     whiptail --backtitle "LOCALE SET TO $LOCALE" --title "Locale: $LOCALE" \
@@ -1009,8 +972,8 @@ add_user_acct(){
 ald_menu(){
     while true ; do
         menupick=$(whiptail --title "Arch Linux Desktop Installer" --menu "Your choice?" 30 70 20 \
-            "Keyboard Layout" "Change keyboard keymap )"  \
-            "L"   "[$(echo ${completed_tasks[2]}] Choose your TimeZone and Locale)"  \
+            "Keyboard Layout" "Change keyboard keymap" \
+            "Time Zone" "Change time zone"  \
             "C"   "[$(echo ${completed_tasks[3]}] Check connection and date)"  \
             "D"   "[$(echo ${completed_tasks[4]}] Prepare Installation Disk)"  \
             "B"   "[$(echo ${completed_tasks[5]}] Install Base System)"        \
@@ -1032,7 +995,7 @@ ald_menu(){
 
             "Keyboard Layout") KeyboardLayout; ;;
 
-            "L")  choose_locale; change_tz; check_tasks 2 ;;
+            "Time Zone") change_tz; ;;
 
             "C")  check_connect; time_date; check_tasks 3 ;;
 

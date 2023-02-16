@@ -117,12 +117,13 @@ change_tz(){
         "Europe" "" \
         3>&1 1>&2 2>&3 )
     for i in $(ls /usr/share/zoneinfo/$zone); do
-        subzone+=( $(printf "%s\t\t%s\n" $timezone 'timezone') )
+        subzonelist+=( $(printf "%s\t\t%s\n" $i "") )
     done
-    timezonx=$(eval `resize`; whiptail --title "Time Zone" --menu "Select city:" $LINES $COLUMNS $(( $LINES - 8 )) \
-        "${subzone[@]}" \
+    subzone=$(eval `resize`; whiptail --title "Time Zone" --menu "Select city:" $LINES $COLUMNS $(( $LINES - 8 )) \
+        "${subzonelist[@]}" \
         3>&1 1>&2 2>&3 )
-    TIMEZONE=$timezonx
+    TIMEZONE="$zone/$subzone"
+    echo TIMEZONE
 }
 
 KeyboardLayout(){

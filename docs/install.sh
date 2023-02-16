@@ -111,14 +111,12 @@ TimeZone(){
         "Australia" "" \
         "Europe" "" \
         3>&1 1>&2 2>&3 )
-    subzonearray=$(ls /usr/share/zoneinfo/$zone)
+    subzonearray=$(find /usr/share/zoneinfo/$zone/ -type f -printf "%f\n" | sort -V)
     subzonearray=( $subzonearray )
     for i in "${subzonearray[@]}"; do
-        subzonelist+=( "\ "$i" """ )
+        subzonelist+=( $( printf "%s\t\t%s" $i "=====" ) )
     done
-    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 30 70 20 \
-        "${subzonelist[@]}" \
-        3>&1 1>&2 2>&3 )
+    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 30 70 20 "${subzonelist[@]}" 3>&1 1>&2 2>&3 )
     TimeZone="$zone/$subzone"
 }
 

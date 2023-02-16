@@ -43,7 +43,7 @@ HOME_SIZE=''       # Takes up rest of drive
 # For some reason the ubuntu geoip server doesn't always work
 TIMEZONE='America/New_York'
 LOCALE="en_US.UTF-8"
-KEYBOARD=""
+KeyboardLayout="us"
 # Perhaps I will use this to determine a user's locale setting; I don't use it right now.
 EXT_IP=$( dig +short myip.opendns.com @resolver1.opendns.com )
 
@@ -106,8 +106,7 @@ ald_start(){
     whiptail --title "Arch Linux Desktop Installer" --msgbox "Test" 15 80 
 }
 
-change_tz(){
-    subzone=()
+TimeZone(){
     zone=$(whiptail --title "Time Zone" --menu "Select continent:" 30 70 20 \
         "Africa" "" \
         "America" "" \
@@ -119,24 +118,23 @@ change_tz(){
     subzonearray=$(ls /usr/share/zoneinfo/$zone)
     subzonearray=( $subzonearray )
     for i in "${subzonearray[@]}"; do
-        subzonelist+=( $(printf "%s\t\t%s\n" $i "") )
+        subzonelist+=( "$i """ )
     done
-    subzone=$(eval `resize`; whiptail --title "Time Zone" --menu "Select city:" $LINES $COLUMNS $(( $LINES - 8 )) \
+    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 30 70 20 \
         "${subzonelist[@]}" \
         3>&1 1>&2 2>&3 )
-    TIMEZONE="$zone/$subzone"
-    echo TIMEZONE
+    TimeZone="$zone/$subzone"
 }
 
 KeyboardLayout(){
-    KEYBOARD=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 30 70 20 \
+    KeyboardLayout=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 30 70 20 \
         "de" "German" \
         "fr" "France" \
         "ru" "Russia" \
         "uk" "Unitet Kindom" \
         "us" "USA" \
         3>&1 1>&2 2>&3 )
-    loadkeys $KEYBOARD
+    loadkeys $KeyboardLayout
 }
 
 # FIND GRAPHICS CARD
@@ -1058,6 +1056,5 @@ ald_menu(){
     done
 }
 
-ald_start
 ald_menu
 

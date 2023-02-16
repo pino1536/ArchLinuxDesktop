@@ -114,7 +114,7 @@ TimeZone(){
     subzonearray=$(ls /usr/share/zoneinfo/$zone)
     subzonearray=( $subzonearray )
     for i in "${subzonearray[@]}"; do
-        subzonelist+=( "$i """ )
+        subzonelist+=( "\ "$i" """ )
     done
     subzone=$(whiptail --title "Time Zone" --menu "Select city:" 30 70 20 \
         "${subzonelist[@]}" \
@@ -971,21 +971,21 @@ ald_menu(){
         menupick=$(whiptail --title "Arch Linux Desktop Installer" --menu "Your choice?" 30 70 20 \
             "Keyboard Layout" "(${KeyboardLayout})" \
             "Time Zone" "(${TimeZone})" \
-            "C"   "[$(echo ${completed_tasks[3]}] Check connection and date)"  \
-            "D"   "[$(echo ${completed_tasks[4]}] Prepare Installation Disk)"  \
-            "B"   "[$(echo ${completed_tasks[5]}] Install Base System)"        \
-            "F"   "[$(echo ${completed_tasks[6]}] New FSTAB and TZ/Locale)"    \
-            "H"   "[$(echo ${completed_tasks[7]}]    Set new hostname)"           \
-            "R"   "[$(echo ${completed_tasks[8]}]    Set root password)"          \
-            "M"   "[$(echo ${completed_tasks[9]}]    Install More network essentials)" \
-            "U"   "[$(echo ${completed_tasks[10]}]    Add user + sudo account) "   \
-            "W"   "[$(echo ${completed_tasks[11]}]    Install Wifi Drivers )"      \
-            "G"   "[$(echo ${completed_tasks[12]}]   Install grub)"               \
-            "E"   "[$(echo ${completed_tasks[13]}]   Choose Graphics Driver and Desktop Environment)" \
-            "X"   "[$(echo ${completed_tasks[14]}]   Install Xorg + Desktop)"     \
-            "I"   "[$(echo ${completed_tasks[15]}]   Install Extra Window Mgrs)"  \
-            "P"   "[$(echo ${completed_tasks[16]}]   Check for pkg name changes)" \
-            "Q"   "[$(echo ${completed_tasks[17]}]   Quit Script) "  3>&1 1>&2 2>&3
+            "C"   "[$(echo ${completed_tasks[3]}] Check connection and date)" \
+            "D"   "[$(echo ${completed_tasks[4]}] Prepare Installation Disk)" \
+            "B"   "[$(echo ${completed_tasks[5]}] Install Base System)" \
+            "F"   "[$(echo ${completed_tasks[6]}] New FSTAB and TZ/Locale)" \
+            "H"   "[$(echo ${completed_tasks[7]}] Set new hostname)" \
+            "R"   "[$(echo ${completed_tasks[8]}] Set root password)" \
+            "M"   "[$(echo ${completed_tasks[9]}] Install More network essentials)" \
+            "U"   "[$(echo ${completed_tasks[10]}] Add user + sudo account) " \
+            "W"   "[$(echo ${completed_tasks[11]}] Install Wifi Drivers )" \
+            "G"   "[$(echo ${completed_tasks[12]}] Install grub)" \
+            "E"   "[$(echo ${completed_tasks[13]}] Choose Graphics Driver and Desktop Environment)" \
+            "X"   "[$(echo ${completed_tasks[14]}] Install Xorg + Desktop)" \
+            "I"   "[$(echo ${completed_tasks[15]}] Install Extra Window Mgrs)" \
+            "P"   "[$(echo ${completed_tasks[16]}] Check for pkg name changes)" \
+            "Q"   "[$(echo ${completed_tasks[17]}] Quit Script) "  3>&1 1>&2 2>&3
         )
 
         case $menupick in

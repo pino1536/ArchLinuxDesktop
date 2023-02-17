@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 
-efi_boot_mode(){
-if [$(ls /sys/firmware/efi/efivars &>/dev/null)]
-then
-    return 0
-else
-    return 1
-fi
-}
 
+efi_boot_mode(){
+    # if the efivars directory exists we definitely have an EFI BIOS
+    # otherwise, we could have a non-standard EFI or even an MBR-only system
+    ( $(ls /sys/firmware/efi/efivars &>/dev/null) && return 0 ) || return 1
+}
 LOGFILE='/tmp/install.log'
 
 IN_DEVICE=''
@@ -102,36 +99,37 @@ all_pkgs=( base_system base_essentials network_essentials basic_x extra_x1 extra
 # Can't show checkmarks very easily...  This array will help show the user which tasks are completed or not
 completed_tasks=( "X" )
 
+KeyboardLayout="uk"
+TimeZone="Europe/London"
+
+welcome(){
+    if [$(ls /sys/firmware/efi/efivars &>/dev/null)]
+    then
+        uefitest="Not an UEFI System!"
+    else
+        uefitest="UEFI System"
+    fi
+
+    whiptail --title "Arch Linux Desktop Installer" --msgbox "Test for UEFI $uefitest" 15 80 
+}
+
 TimeZone(){
-    zone=$(whiptail --title "Time Zone" --menu "Select continent:" 30 70 20 \
-        "Africa" "" \
-        "America" "" \
-        "Antarctica" "" \
-        "Asia" "" \
-        "Australia" "" \
-        "Europe" "" \
-        3>&1 1>&2 2>&3 )
-    subzonearray=($(ls /usr/share/zoneinfo/$zone))
-    echo "${subzonearray[@]}" > testx
-    for i in "${subzonearray[@]}"; do
-        subzonelist+=( $( printf "%s\t\t%s\n" $i "===" ) )
+    getsubzones=()
+    subzones=()
+    zone=$(whiptail --title "Time Zone" --menu "Select continent:" 30 70 20 "Africa" "" "America" "" "Antarctica" "" "Asia" "" "Australia" "" "Europe" "" 3>&1 1>&2 2>&3)
+    getsubzones=($(ls /usr/share/zoneinfo/$zone))
+    for i in ${getsubzones[@]}; do
+        subzones+=($i "")
     done
-    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 30 70 20 "${subzonelist[@]}" 3>&1 1>&2 2>&3 )
+    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 30 70 20 "${subzones[@]}" 3>&1 1>&2 2>&3 )
     TimeZone="$zone/$subzone"
 }
 
 KeyboardLayout(){
-    KeyboardLayout=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 30 70 20 \
-        "de" "German" \
-        "fr" "France" \
-        "ru" "Russia" \
-        "uk" "Unitet Kindom" \
-        "us" "USA" \
-        3>&1 1>&2 2>&3 )
+    KeyboardLayout=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 30 70 20 "de" "German" "fr" "France" "ru" "Russia" "uk" "Unitet Kindom" "us" "USA" 3>&1 1>&2 2>&3)
     loadkeys $KeyboardLayout
 }
 
-# FIND GRAPHICS CARD
 find_card(){
     card=$(lspci | grep VGA | sed 's/^.*: //g')
 
@@ -1050,5 +1048,6 @@ ald_menu(){
     done
 }
 
+welcome
 ald_menu
 

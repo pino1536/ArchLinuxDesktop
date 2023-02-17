@@ -38,9 +38,8 @@ HOME_SIZE=''       # Takes up rest of drive
 
 # You can edit this if you want
 # For some reason the ubuntu geoip server doesn't always work
-TimeZone='America/New_York'
 LOCALE="en_US.UTF-8"
-KeyboardLayout="us"
+
 # Perhaps I will use this to determine a user's locale setting; I don't use it right now.
 EXT_IP=$( dig +short myip.opendns.com @resolver1.opendns.com )
 
@@ -99,35 +98,48 @@ all_pkgs=( base_system base_essentials network_essentials basic_x extra_x1 extra
 # Can't show checkmarks very easily...  This array will help show the user which tasks are completed or not
 completed_tasks=( "X" )
 
-KeyboardLayout="uk"
 TimeZone="Europe/London"
+KeyboardLayout="uk"
+NetworkConnection="Offline!"
+
+PreTest(){
+    if $(ping -c 3 archlinux.org &>/dev/null); then
+        NetworkConnection="Online!"
+    else
+        NetworkConnection="Offline!"
+    fi
+}
 
 welcome(){
     if [$(ls /sys/firmware/efi/efivars &>/dev/null)]
     then
-        uefitest="Not an UEFI System!"
+        whiptail --title "Arch Linux Desktop Installer" --msgbox "No UIFI System!" 15 80
     else
-        uefitest="UEFI System"
+        whiptail --title "Arch Linux Desktop Installer" --msgbox "UEFI" 15 80
     fi
-
-    whiptail --title "Arch Linux Desktop Installer" --msgbox "Test for UEFI $uefitest" 15 80 
 }
 
 TimeZone(){
     getsubzones=()
     subzones=()
-    zone=$(whiptail --title "Time Zone" --menu "Select continent:" 30 70 20 "Africa" "" "America" "" "Antarctica" "" "Asia" "" "Australia" "" "Europe" "" 3>&1 1>&2 2>&3)
+    zone=$(whiptail --title "Time Zone" --menu "Select continent:" 25 50 20 "Africa" "" "America" "" "Antarctica" "" "Asia" "" "Australia" "" "Europe" "" 3>&1 1>&2 2>&3)
     getsubzones=($(ls /usr/share/zoneinfo/$zone))
     for i in ${getsubzones[@]}; do
         subzones+=($i "")
     done
-    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 30 70 20 "${subzones[@]}" 3>&1 1>&2 2>&3 )
+    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 25 50 20 "${subzones[@]}" 3>&1 1>&2 2>&3 )
     TimeZone="$zone/$subzone"
 }
 
 KeyboardLayout(){
-    KeyboardLayout=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 30 70 20 "de" "German" "fr" "France" "ru" "Russia" "uk" "Unitet Kindom" "us" "USA" 3>&1 1>&2 2>&3)
+    KeyboardLayout=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 25 50 20 "de" "German" "fr" "France" "ru" "Russia" "uk" "Unitet Kindom" "us" "USA" 3>&1 1>&2 2>&3)
     loadkeys $KeyboardLayout
+}
+
+NetworkConnection(){
+    timestatus=$(timedatectl status)
+    whiptail --title "Network Connection" --msgbox "$NetworkConnection n\n\ $timestatus" 25 50
+    # For Later Wifi Setup
 }
 
 find_card(){
@@ -135,33 +147,6 @@ find_card(){
 
     whiptail --title "Your Video Card" --msgbox \
        "You're using a $card  Write this down and hit OK to continue." 8 65 3>&1 1>&2 2>&3
-}
-
-# IF NOT CONNTECTED
-not_connected(){
-    
-    message="No network connection!!!  Perhaps your wifi card is not supported?\nIs your network card plugged in?"
-
-    TERM=ansi whiptail --backtitle "NO NETWORK CONNECTION" \
-        --title "Are you connected?" --infobox "$message" 15 70
-    sleep 5
-    exit 1
-}
-
-# ARE WE CONNTECTED??
-check_connect(){
-    TERM=ansi whiptail --backtitle "Checking Network Connection" \
-        --title "Are you connected?" --infobox "Checking connection now..." 15 60 
-
-    if $(ping -c 3 archlinux.org &>/dev/null); then
-
-        TERM=ansi whiptail --backtitle "Network is UP" --title "Network is up!" \
-           --infobox "Your network connection is up!" 15 60
-
-        sleep 3
-    else
-        not_connected
-    fi
 }
 
 # NOTE:  Showing a progress gauge in whiptail is a pain.  I do it by 
@@ -209,14 +194,6 @@ specialprogressgauge(){
         echo "=== No longer watching PID: $thepid ===" &>>$LOGFILE
         break
     done  | whiptail --backtitle "$backmessage" --title "Progress Gauge" --gauge "$message" 9 70 0
-}
-
-# UPDATE SYSTEM CLOCK
-time_date(){
-    timedatectl set-ntp true >"$LOGFILE" 2>&1
-    time_date_status=$(timedatectl status)
-    whiptail --backtitle "Timedate Status" --title "Time and Date Status" \
-        --msgbox "$time_date_status" 10 70
 }
 
 # CHECK IF TASK IS COMPLETED
@@ -286,7 +263,7 @@ show_error(){
     whiptail --backtitle "ERROR! ERROR!" --title "Error: " --msgbox "$message" 20 80
     whiptail --backtitle "QUIT OR CONTINUE" --title "Quit or Continue?" --yesno \
         --yes-button "Return to startmenu" --no-button "Exit DARCHI"
-    ( [[ $? -eq 0 ]] && ald_menu ) || exit 1
+    ( [[ $? -eq 0 ]] && Menu ) || exit 1
 }
 
 
@@ -491,7 +468,7 @@ EOF
     whiptail --title "LV's Created and Mounted" --backtitle "Filesystem Created" \
         --textbox /tmp/filesystems_created 30 70
     sleep 4
-    ald_menu
+    Menu
 }
 
 # MOUNT PARTION
@@ -559,7 +536,7 @@ format_disk(){
                 sleep 3
             ;;
         * ) whiptail --title "Bad disk format request" \
-            --infobox "Can't make that disk * * format" 8 60 && sleep 5  && ald_menu ;;
+            --infobox "Can't make that disk * * format" 8 60 && sleep 5  && Menu ;;
     esac
 }
 
@@ -589,8 +566,8 @@ EOF
         fi
     
     else
-        whiptail --title "Not Partitioning Disk" --msgbox "Sending you back to ald_menu. OK?"  8 60
-        ald_menu
+        whiptail --title "Not Partitioning Disk" --msgbox "Sending you back to Menu. OK?"  8 60
+        Menu
     fi
 
     # SHOW RESULTS:
@@ -689,7 +666,7 @@ diskmenu(){
 
             "M") device=$(choose_disk); clear; bash --init-file <(parted /dev/"$device"  1>&1 2>&2) ; check_tasks 4 ;;
 
-            "R") ald_menu ;;
+            "R") Menu ;;
         esac
     done
 }
@@ -962,12 +939,12 @@ add_user_acct(){
     sleep 3
 }
 
-ald_menu(){
+Menu(){
     while true ; do
-        menupick=$(whiptail --title "Arch Linux Desktop Installer" --menu "Your choice?" 30 70 20 \
-            "Keyboard Layout" "(${KeyboardLayout})" \
-            "Time Zone" "(${TimeZone})" \
-            "C"   "[$(echo ${completed_tasks[3]}] Check connection and date)" \
+        menupick=$(whiptail --title "Arch Linux Desktop Installer" --menu "Your choice?" 25 50 20 \
+            "Keyboard Layout" "($KeyboardLayout)" \
+            "Time Zone" "($TimeZone)" \
+            "Network Connection" "($NetworkConnection)" \
             "D"   "[$(echo ${completed_tasks[4]}] Prepare Installation Disk)" \
             "B"   "[$(echo ${completed_tasks[5]}] Install Base System)" \
             "F"   "[$(echo ${completed_tasks[6]}] New FSTAB and TZ/Locale)" \
@@ -983,14 +960,10 @@ ald_menu(){
             "P"   "[$(echo ${completed_tasks[16]}] Check for pkg name changes)" \
             "Q"   "[$(echo ${completed_tasks[17]}] Quit Script) "  3>&1 1>&2 2>&3
         )
-
         case $menupick in
-
             "Keyboard Layout") KeyboardLayout; ;;
-
             "Time Zone") TimeZone; ;;
-
-            "C")  check_connect; time_date; check_tasks 3 ;;
+            "Network Connection")  NetworkConnection; ;;
 
             "D")  diskmenu ;;
 
@@ -1048,6 +1021,6 @@ ald_menu(){
     done
 }
 
-welcome
-ald_menu
+PreTest
+Menu
 

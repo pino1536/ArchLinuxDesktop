@@ -1,34 +1,6 @@
 #!/usr/bin/env bash
 
-
-efi_boot_mode(){
-    # if the efivars directory exists we definitely have an EFI BIOS
-    # otherwise, we could have a non-standard EFI or even an MBR-only system
-    ( $(ls /sys/firmware/efi/efivars &>/dev/null) && return 0 ) || return 1
-}
-LOGFILE='/tmp/install.log'
-
-IN_DEVICE=''
-EFI_SLICE=''
-ROOT_SLICE=''
-HOME_SLICE=''
-SWAP_SLICE=''
-
-display_mgr=(lightdm)                 # lightdm goes well with cinnamon desktop
-
-USE_CRYPT='' # gets set programmatically
-CRYPT_PART="arch_crypt"   # encrypted volume group for cryptsetup
-VOL_GROUP="arch_vg"
-LV_ROOT="ArchRoot"
-LV_HOME="ArchHome"
-LV_SWAP="ArchSwap"
-
-# PARTITION SIZES  (You can edit these if desired)
-BOOT_SIZE=512M     # BOOT applies to non-efi BIOS and MBR disklable
-EFI_SIZE=512M      # EFI applies to GPT disklable
-ROOT_SIZE=15G      # Applies to either root partition or root logical volume
-SWAP_SIZE=4G       # calculate this with SWAP_SIZE="$(free | awk '/^Mem/ {mem=$2/1000000; print int(2.2*mem)}')G"
-HOME_SIZE=''       # Takes up rest of drive
+# efi_boot_mode(){( $(ls /sys/firmware/efi/efivars &>/dev/null) && return 0 ) || return 1}
 
 kde_desktop=( plasma plasma-wayland-session kde-applications plasma-workspace-wallpapers )
 devel_stuff=( git nodejs npm npm-check-updates ruby )
@@ -82,7 +54,7 @@ set_hostname(){
 
 set_root(){
     rootpw=$(whiptail --title "Set new root password" --passwordbox "Please set your new root password..." 8 48 3>&1 1>&2 2>&3)
-    rootset="OK"
+    rootset="Set"
 }
 
 set_user(){
@@ -90,8 +62,11 @@ set_user(){
     userpw=$(whiptail --title "Getting user password" --passwordbox "Please enter your new user's password: " 8 78 3>&1 1>&2 2>&3)
 }
 
-set_cpugpu(){
+set_cpu(){
     cpu=$(whiptail --title "GPU" --menu "Select CPU:" 25 50 20 "AMD" "" "Intel" "" 3>&1 1>&2 2>&3)
+}
+
+set_gpu(){
     gpu=$(whiptail --title "GPU" --menu "Select GPU:" 25 50 20 "AMD" "" "Nvidia" "" "Intel" "" 3>&1 1>&2 2>&3)
     # card=$(lspci | grep VGA | sed 's/^.*: //g')
 }
@@ -103,7 +78,54 @@ set_disk(){
     done
     disk=$(whiptail --title "Select Disk" --menu "Select disk device:" 25 50 20 "${disks[@]}" 3>&1 1>&2 2>&3)
 }
+install_disk(){
+    while true ; do
+        menupick=$(whiptail --title "Disk Partition and Formating" --menu "Default Partition Layout: EFI (500mb), Swap (4gb), Root (?)" 25 50 10 \
+            "Wipe All" "Wipe Disk and create default Partitions" \
+            "Dualboot" "Use the existing Boot Partition" \
+            "Manual" "The Command Line way." \
+            "Cancel" "" 3>&1 1>&2 2>&3
+        )
+        case $menupick in
+            "Wipe All") install_disk_wipe ;;
+            "Dualboot") install_disk_dualboot ;;
+            "Manual") install_disk_manual ;;
+            "Cancel") menu ;;
+        esac
+    done
+}
+install_disk_wipe(){
+    local rootsize=3
+    (
+        echo g
+        echo n
+        echo 1
+        echo  
+        echo +512M
+        echo t
+        echo 1
+        echo n
+        echo 2
+        echo  
+        echo +4048M
+        echo t
+        echo 2
+        echo 19
+        echo n
+        echo 3
+        echo  
+        echo +${rootsize}G
+        echo t
+        echo 3
+        echo 23
+        echo w
+    ) | fdisk /dev/$disk
 
+    # format_disk "$ROOT_SLICE" root
+    # format_disk "$EFI_SLICE" efi
+    # format_disk "$SWAP_SLICE" swap
+    menu
+}
 install_base(){
     local microcode=""
     case $cpu in
@@ -112,7 +134,6 @@ install_base(){
     esac
     pacstrap -K /mnt base linux linux-firmware grub efibootmgr networkmanager $microcode
 }
-
 install_settings(){
     # 3.1 Fstab
     genfstab -U /mnt >> /mnt/etc/fstab
@@ -163,27 +184,33 @@ install_desktop(){
     arch-chroot /mnt pacman -S "${all_extras[@]}" --noconfirm
 }
 menu(){
+    local c="Keyboard Layout"
     while true ; do
-        menupick=$(whiptail --title "Arch Linux Desktop Installer" --menu "Your choice?" 25 50 20 \
-            "Keyboard Layout" "$keymap" \
-            "Time Zone" "$zone/$subzone" \
-            "Hostname" "$hostname" \
-            "Root Password" "$rootset" \
-            "User Account" "$user" \
-            "Network" "$networkconnection" \
-            "CPU/GPU" "$cpu / $gpu" \
-            "Disk" "$disk" \
-            "Cancel" "" 3>&1 1>&2 2>&3
+        menupick=$(whiptail --title "Arch Linux Desktop Installer" --default-item "${c}" --menu "Install Settings:" 25 50 10 \
+            "Keyboard Layout" "${keymap}" \
+            "Time Zone" "${subzone}" \
+            "Hostname" "${hostname}" \
+            "Root Password" "${rootset}" \
+            "User Account" "${user}" \
+            "Network" "${networkconnection}" \
+            "CPU" "${cpu}" \
+            "GPU" "${gpu}" \
+            "Disk" "${disk}" \
+            "Next" "" \
+            "Cancel                 " "" 3>&1 1>&2 2>&3
         )
         case $menupick in
-            "Keyboard Layout") set_keymap ;;
-            "Time Zone") set_timezone ;;
-            "Hostname") set_hostname; ;;
-            "Root Password") set_root; ;;
-            "User Account") set_user; ;;
-            "CPU/GPU") set_cpugpu; ;;
-            "Disk") set_disk ;;
-            "Cancel") exit 0 ;;
+            "Keyboard Layout") set_keymap; c="Keyboard Layout" ;;
+            "Time Zone") set_timezone; c="Time Zone" ;;
+            "Hostname") set_hostname; c="Hostname" ;;
+            "Root Password") set_root; c="Root Password" ;;
+            "User Account") set_user; c="User Account" ;;
+            "Network") mc="Network" ;;
+            "CPU") set_cpu; c="CPU" ;;
+            "GPU") set_gpu; c="GPU" ;;
+            "Disk") set_disk; c="Disk" ;;
+            "Next") install_disk ;;
+            "Cancel                 ") exit 0 ;;
         esac
     done
 }
@@ -473,69 +500,7 @@ format_disk(){
             --infobox "Can't make that disk * * format" 8 60 && sleep 5  && Menu ;;
     esac
 }
-part_disk(){
-    device=$1 ; IN_DEVICE="/dev/$device"
 
-    if $( whiptail --backtitle "DISK FORMATTING" --title "Formatting Drive" --yesno "Partitioning Drive EFI: $EFI_SIZE ROOT: $ROOT_SIZE SWAP: $SWAP_SIZE HOME: $HOME_SIZE  OK to proceed?" 10 59 3>&1 1>&2 2>&3 ) ; then
-    
-    
-        if $(efi_boot_mode); then
-                sgdisk -Z "$IN_DEVICE"                                         &>> $LOGFILE
-                sgdisk -n 1::+"$EFI_SIZE" -t 1:ef00 -c 1:EFI "$IN_DEVICE"      &>> $LOGFILE
-                sgdisk -n 2::+"$ROOT_SIZE" -t 2:8300 -c 2:ROOT "$IN_DEVICE"    &>> $LOGFILE
-                sgdisk -n 3::+"$SWAP_SIZE" -t 3:8200 -c 3:SWAP "$IN_DEVICE"    &>> $LOGFILE
-                sgdisk -n 4 -c 4:HOME "$IN_DEVICE"                             &>> $LOGFILE
-        else
-        # For non-EFI. Eg. for MBR systems 
-cat > /tmp/sfdisk.cmd << EOF
-$BOOT_DEVICE : start= 2048, size=+$BOOT_SIZE, type=83, bootable
-$ROOT_DEVICE : size=+$ROOT_SIZE, type=83
-$SWAP_DEVICE : size=+$SWAP_SIZE, type=82
-$HOME_DEVICE : type=83
-EOF
-        # Using sfdisk because we're talking MBR disktable now...
-        sfdisk /dev/sda < /tmp/sfdisk.cmd   &>> $LOGFILE
-        fi
-    
-    else
-        whiptail --title "Not Partitioning Disk" --msgbox "Sending you back to Menu. OK?"  8 60
-        Menu
-    fi
-
-    # SHOW RESULTS:
-    status=$(fdisk -l "$IN_DEVICE"; lsblk -f "$IN_DEVICE")
-    whiptail --backtitle "CREATED PARTITIONS" --title "Current Disk Status" --msgbox "$status  OK to continue." 30 75
-
-    # ROOT DEVICE
-    root_device=$(whiptail --title "ROOT DEVICE" --inputbox "What's your rootdevice? (sda2, nvmen1p2, sdb2, etc)" 30 75 3>&1 1>&2 2>&3)
-    ROOT_SLICE="/dev/$root_device"
-    [[ -n "$root_device" ]] && format_disk "$ROOT_SLICE" root
-
-
-    # EFI_DEVICE
-    efi_dev_message=$(echo "EFI device name (leave empty if not EFI/GPT) (sda1, nvmen1p1, etc)?")
-    efi_device=$(whiptail --title "Get EFI Device Name" --inputbox "$efi_dev_message" 30 75 3>&1 1>&2 2>&3)
-    EFI_SLICE="/dev/$efi_device"
-    [[ -n "$efi_device" ]] && format_disk "$EFI_SLICE" efi
-
-    # SWAP_DEVICE
-    swap_dev_message=$(echo "Swap device name? (sda3, nvmen1p3, etc) (leave empty if no swap device)")
-    swap_device=$(whiptail --title "Get Swap Device" --inputbox "$swap_dev_message" 30 75 3>&1 1>&2 2>&3)
-    SWAP_SLICE="/dev/$swap_device"
-    [[ -n "$swap_device" ]] && format_disk "$SWAP_SLICE" swap
-
-    # HOME_DEVICE
-    home_dev_message=$(echo "Home device name? (sda4, nvmen1p4, etc) (leave empty if no home device)")
-    home_device=$(whiptail --title "Get Home Device" --inputbox "$home_dev_message" 30 75 3>&1 1>&2 2>&3)
-    HOME_SLICE="/dev/$home_device"
-    [[ -n "$home_device" ]] && format_disk "$HOME_SLICE" home
-
-    # CHECK IF IT HAPPENED CORRECTLY
-    message=$(lsblk "$IN_DEVICE" && echo "Disks should be partitioned and mounted. OK to continue")
-    whiptail --backtitle "DISKS PARTITIONED, FORMATTED and MOUNTED" --title "DISKS OKAY?" --msgbox "$message" 25 75 
-}
-
-# ENCRYPT DISK WHEN POWER IS OFF
 crypt_setup(){
     # Takes a disk partition as an argument
     # Give msg to user about purpose of encrypted physical volume

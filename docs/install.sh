@@ -172,7 +172,7 @@ menu(){
             "User Account" "$user" \
             "Network" "$networkconnection" \
             "CPU/GPU" "$cpu / $gpu" \
-            "Partition" "$disk" \
+            "Disk" "$disk" \
             "Cancel" "" 3>&1 1>&2 2>&3
         )
         case $menupick in

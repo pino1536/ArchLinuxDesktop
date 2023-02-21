@@ -14,14 +14,8 @@ ROOT_SLICE=''
 HOME_SLICE=''
 SWAP_SLICE=''
 
-# DEFAULT GRAPHICS DRIVERS ETC   ---  change as needed via whiptail later in script ---
-wifi_drivers=(broadcom-wl-dkms iwd)   # find chipset for YOUR wifi card!
-graphics_driver=(xf86-video-vmware)   # $( pacman -Ss xf86-video- ) will list available drivers...
 display_mgr=(lightdm)                 # lightdm goes well with cinnamon desktop
-mydesktop=( "${cinnamon_desktop[@]}" )
 
-# VOL GROUP VARIABLES
-USE_LVM=''   # gets set programmatically
 USE_CRYPT='' # gets set programmatically
 CRYPT_PART="arch_crypt"   # encrypted volume group for cryptsetup
 VOL_GROUP="arch_vg"
@@ -36,134 +30,176 @@ ROOT_SIZE=15G      # Applies to either root partition or root logical volume
 SWAP_SIZE=4G       # calculate this with SWAP_SIZE="$(free | awk '/^Mem/ {mem=$2/1000000; print int(2.2*mem)}')G"
 HOME_SIZE=''       # Takes up rest of drive
 
-# You can edit this if you want
-# For some reason the ubuntu geoip server doesn't always work
-LOCALE="en_US.UTF-8"
-
-# Perhaps I will use this to determine a user's locale setting; I don't use it right now.
-EXT_IP=$( dig +short myip.opendns.com @resolver1.opendns.com )
-
-# replace with linux-lts or -zen if preferrable
-base_system=( base base-devel linux linux-headers dkms linux-firmware vim sudo bash-completion )
-
-base_essentials=(git mlocate pacman-contrib pacman-keyring man-db man-pages)
-
-network_essentials=( iwd dhcpcd openssh networkmanager )
-
-my_services=( dhcpcd sshd NetworkManager systemd-homed )
-
-basic_x=( xorg-server xorg-xinit mesa xorg-twm xterm gnome-terminal xorg-xclock xfce4-terminal firefox neofetch screenfetch lightdm-gtk-greeter )
-
-extra_x1=( gkrellm powerline powerline-fonts powerline-vim adobe-source-code-pro-fonts cantarell-fonts gnu-free-fonts ) 
-
-extra_x2=( noto-fonts breeze-gtk breeze-icons gtk-engine-murrine oxygen-icons xcursor-themes adapta-gtk-theme )
-
-extra_x3=( arc-gtk-theme elementary-icon-theme faenza-icon-theme gnome-icon-theme-extras arc-icon-theme lightdm-webkit-theme-litarvan mate-icon-theme ) 
-
-extra_x4=( materia-gtk-theme papirus-icon-theme xcursor-bluecurve xcursor-premium archlinux-wallpaper deepin-community-wallpapers deepin-wallpapers elementary-wallpapers )
-
-cinnamon_desktop=( cinnamon nemo-fileroller )
-
-#####  Include these desktops in 'all_extras' array if desired
-xfce_desktop=( xfce4 xfce4-goodies )
-
-mate_desktop=( mate mate-extra )
-
-gnome_desktop=( gnome gnome-extra )
-
-i3gaps_desktop=( i3-gaps dmenu feh rofi i3status i3blocks nitrogen i3status ttf-font-awesome ttf-ionicons )
-
-qtile_desktop=( qtile dmenu feh rofi nitrogen ttf-font-awesome ttf-ionicons "${multimedia_stuff[@]}" )
-
-xmonad_desktop=( xmonad xmonad-contrib )
-
-awesome_desktop=( awesome vicious )
-
 kde_desktop=( plasma plasma-wayland-session kde-applications plasma-workspace-wallpapers )
-
-## Python3 should be installed by default
 devel_stuff=( git nodejs npm npm-check-updates ruby )
-
 printing_stuff=( system-config-printer foomatic-db foomatic-db-engine gutenprint cups cups-pdf cups-filters cups-pk-helper ghostscript gsfonts )
-
 multimedia_stuff=( brasero sox eog shotwell imagemagick sox cmus mpg123 alsa-utils cheese )
-
-all_extras=( "${kde_desktop[@]}" "${xmonad_desktop[@]}" "${qtile_desktop[@]}" "${xfce_desktop[@]}" "${i3gaps_desktop[@]}" "${mate_desktop[@]}" "${devel_stuff[@]}" "${printing_stuff[@]}" "${multimedia_stuff[@]}" )
-
-##  fonts_themes=()    #  in case I want to break these out from extra_x
-
-# This will exclude services because they are often named differently and are duplicates
-all_pkgs=( base_system base_essentials network_essentials basic_x extra_x1 extra_x2 extra_x3 extra_x4 cinnamon_desktop xfce_desktop mate_desktop i3gaps_desktop devel_stuff printing_stuff multimedia_stuff qtile_desktop kde_desktop )
+all_extras=( "${kde_desktop[@]}" "${devel_stuff[@]}" "${printing_stuff[@]}" "${multimedia_stuff[@]}" )
+all_pkgs=()
 
 # Can't show checkmarks very easily...  This array will help show the user which tasks are completed or not
 completed_tasks=( "X" )
 
-TimeZone="Europe/London"
-KeyboardLayout="uk"
-NetworkConnection="Offline!"
+keymap="-"
+zone="-"
+subzone="-"
+hostname="-"
+rootpw="-"
+rootset="-"
+user="-"
+userpw="-"
+cpu="-"
+gpu="-"
+disk="-"
 
-PreTest(){
+prepare(){
     if $(ping -c 3 archlinux.org &>/dev/null); then
-        NetworkConnection="Online!"
+        networkconnection="Online"
     else
-        NetworkConnection="Offline!"
+        networkconnection="Offline"
     fi
 }
 
-welcome(){
-    if [$(ls /sys/firmware/efi/efivars &>/dev/null)]
-    then
-        whiptail --title "Arch Linux Desktop Installer" --msgbox "No UIFI System!" 15 80
-    else
-        whiptail --title "Arch Linux Desktop Installer" --msgbox "UEFI" 15 80
-    fi
+set_keymap(){
+    keymap=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 25 50 20 "de" "German" "fr" "France" "ru" "Russia" "uk" "Unitet Kindom" "us" "USA" 3>&1 1>&2 2>&3)
+    loadkeys $keymap
 }
 
-TimeZone(){
-    getsubzones=()
-    subzones=()
+set_timezone(){
+    local getsubzones=()
+    local subzones=()
     zone=$(whiptail --title "Time Zone" --menu "Select continent:" 25 50 20 "Africa" "" "America" "" "Antarctica" "" "Asia" "" "Australia" "" "Europe" "" 3>&1 1>&2 2>&3)
     getsubzones=($(ls /usr/share/zoneinfo/$zone))
     for i in ${getsubzones[@]}; do
         subzones+=($i "")
     done
-    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 25 50 20 "${subzones[@]}" 3>&1 1>&2 2>&3 )
-    TimeZone="$zone/$subzone"
+    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 25 50 20 "${subzones[@]}" 3>&1 1>&2 2>&3)
 }
 
-KeyboardLayout(){
-    KeyboardLayout=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 25 50 20 "de" "German" "fr" "France" "ru" "Russia" "uk" "Unitet Kindom" "us" "USA" 3>&1 1>&2 2>&3)
-    loadkeys $KeyboardLayout
+set_hostname(){
+    hostname=$(whiptail --title "Hostname" --inputbox "What is your new hostname?" 20 40 3>&1 1>&2 2>&3)
 }
 
-NetworkConnection(){
-    timestatus=$(timedatectl status)
-    whiptail --title "Network Connection" --msgbox "$NetworkConnection n\n\ $timestatus" 25 50
-    # For Later Wifi Setup
+set_root(){
+    rootpw=$(whiptail --title "Set new root password" --passwordbox "Please set your new root password..." 8 48 3>&1 1>&2 2>&3)
+    rootset="OK"
 }
+
+set_user(){
+    user=$(whiptail --title "Please provide sudo username" --inputbox "Please provide a sudo username: " 8 40 3>&1 1>&2 2>&3)
+    userpw=$(whiptail --title "Getting user password" --passwordbox "Please enter your new user's password: " 8 78 3>&1 1>&2 2>&3)
+}
+
+set_cpugpu(){
+    cpu=$(whiptail --title "GPU" --menu "Select CPU:" 25 50 20 "AMD" "" "Intel" "" 3>&1 1>&2 2>&3)
+    gpu=$(whiptail --title "GPU" --menu "Select GPU:" 25 50 20 "AMD" "" "Nvidia" "" "Intel" "" 3>&1 1>&2 2>&3)
+    # card=$(lspci | grep VGA | sed 's/^.*: //g')
+}
+
+set_disk(){
+    local disks=()
+    for i in $(lsblk /dev/hd* /dev/sd* /dev/nvme* --nodeps --scsi --noheadings --output NAME,SIZE); do
+        disks+=(${i})
+    done
+    disk=$(whiptail --title "Select Disk" --menu "Select disk device:" 25 50 20 "${disks[@]}" 3>&1 1>&2 2>&3)
+}
+
+install_base(){
+    local microcode=""
+    case $cpu in
+        "AMD") microcode="amd-ucode" ;;
+        "Intel") microcode="intel-ucode" ;;
+    esac
+    pacstrap -K /mnt base linux linux-firmware grub efibootmgr networkmanager $microcode
+}
+
+install_settings(){
+    # 3.1 Fstab
+    genfstab -U /mnt >> /mnt/etc/fstab
+
+    # 3.2 Chroot
+    arch-chroot /mnt
+
+    # 3.3 Time zone
+    ln -sf /usr/share/zoneinfo/$zone/$subzone /etc/localtime
+    hwclock --systohc
+
+    # 3.4 Localization
+    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+    locale-gen
+    echo "LANG=en_US.UTF-8" > /etc/locale.conf
+    echo "KEYMAP=$keymap" > /etc/vconsole.conf
+
+    # 3.5 Network configuration
+    echo "$hostname" > /mnt/etc/hostname
+    echo -ne "127.0.0.1\tlocalhost\n::1\tlocalhost\n127.0.1.1\t$hostname.localdomain\t$hostname" > /mnt/etc/hosts
+    systemctl enable NetworkManager
+
+    # 3.7 Root password
+    echo -e "$rootpw\n$rootpw" | passwd
+    useradd -m -G wheel "$user"
+    echo -e "$userpw\n$userpw" | passwd "$user"
+
+    # 3.8 Boot loader
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+    grub-mkconfig -o /boot/grub/grub.cfg
+}
+install_desktop(){
+    # EXTRA PACKAGES, FONTS, THEMES, CURSORS
+    arch-chroot /mnt pacman -S "${basic_x[@]}" --noconfirm   &>>$LOGFILE
+    arch-chroot /mnt pacman -S "${extra_x1[@]}" --noconfirm    &>>$LOGFILE
+    arch-chroot /mnt pacman -S "${extra_x2[@]}" --noconfirm   &>>$LOGFILE
+    arch-chroot /mnt pacman -S "${extra_x3[@]}" --noconfirm   &>>$LOGFILE
+    arch-chroot /mnt pacman -S "${extra_x4[@]}" --noconfirm   &>>$LOGFILE
+    arch-chroot /mnt pacman -S "${devel_stuff[@]}" --noconfirm   &>>$LOGFILE
+    arch-chroot /mnt pacman -S "${printing_stuff[@]}" --noconfirm   &>>$LOGFILE
+    arch-chroot /mnt pacman -S "${multimedia_stuff[@]}" --noconfirm   &>>$LOGFILE
+
+    # DRIVER FOR GRAPHICS CARD, DESKTOP, DISPLAY MGR
+    arch-chroot /mnt pacman -S "${display_mgr[@]}" --noconfirm  &>>$LOGFILE 
+    arch-chroot /mnt pacman -S "xf86-video-vmware" --noconfirm    &>>$LOGFILE 
+    arch-chroot /mnt pacman -S "${kde_desktop[@]}" --noconfirm   &>>$LOGFILE
+    arch-chroot /mnt systemctl enable "${display_mgr[@]}" &>>$LOGFILE 2>&1
+    arch-chroot /mnt pacman -S "${all_extras[@]}" --noconfirm
+}
+menu(){
+    while true ; do
+        menupick=$(whiptail --title "Arch Linux Desktop Installer" --menu "Your choice?" 25 50 20 \
+            "Keyboard Layout" "$keymap" \
+            "Time Zone" "$zone/$subzone" \
+            "Hostname" "$hostname" \
+            "Root Password" "$rootset" \
+            "User Account" "$user" \
+            "Network" "$networkconnection" \
+            "CPU/GPU" "$cpu / $gpu" \
+            "Partition" "" \
+            "Install" "" \
+            "Cancel" "" 3>&1 1>&2 2>&3
+        )
+        case $menupick in
+            "Keyboard Layout") set_keymap ;;
+            "Time Zone") set_timezone ;;
+            "Hostname") set_hostname; ;;
+            "Root Password") set_root; ;;
+            "User Account") set_user; ;;
+            "CPU/GPU") set_cpugpu; ;;
+            "Partition") get_install_device ;;
+            "Install") specialprogressgauge install_general "Installing Xorg and Desktop Resources..." "INSTALLING XORG" ;;
+            "Cancel") exit 0 ;;
+        esac
+    done
+}
+
+
+####################################
 
 find_card(){
-    card=$(lspci | grep VGA | sed 's/^.*: //g')
+    
 
     whiptail --title "Your Video Card" --msgbox \
        "You're using a $card  Write this down and hit OK to continue." 8 65 3>&1 1>&2 2>&3
 }
-
-# NOTE:  Showing a progress gauge in whiptail is a pain.  I do it by 
-# passing the name of the process to measure (a function name) to a
-# calling function.  The calling function calls the function and sends
-# it to the background, and then immediately captures its PID.  
-# We check for that PID and keep showing the progress meter if its still
-# in the PID table.  If it drops out of the PID table, then we immediately
-# show 98 99 100 pct progress with a 3 second wait between each.
-# If the process is taking a very long time, we show 97pct 98pct 97pct 
-# 98pct until the PID drops out of the PID table.  This way the user
-# never suspects the install has frozen, just that he's going spastic.
-
-
-# FOR SHOWING PROGRESS GAUGE FOR WHIPTAIL (this does the counting)
 showprogress(){
-    # start count, end count, shortest sleep, longest sleep
     start=$1; end=$2; shortest=$3; longest=$4
 
     for n in $(seq $start $end); do
@@ -172,8 +208,6 @@ showprogress(){
         sleep $pause
     done
 }
-
-# CALL FOR SHOWING PROGRESS GAUGE (this calls the function)
 specialprogressgauge(){
     process_to_measure=$1   # This is the function we're going to measure progress for
     message=$2              # Message on Whiptail progress window
@@ -195,103 +229,19 @@ specialprogressgauge(){
         break
     done  | whiptail --backtitle "$backmessage" --title "Progress Gauge" --gauge "$message" 9 70 0
 }
-
-# CHECK IF TASK IS COMPLETED
 check_tasks(){
     completed_tasks[$1]="X"
 }
-
-# FOR MKINITCPIO.IMG
 lvm_hooks(){
     sed -i 's/^HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)$/HOOKS=(base udev autodetect modconf block lvm2 filesystems keyboard fsck)/g' /mnt/etc/mkinitcpio.conf
     arch-chroot /mnt mkinitcpio -P 
 }
-
 encrypt_lvm_hooks(){
     sed -i 's/^HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)$/HOOKS=(base udev autodetect modconf block encrypt lvm2 filesystems keyboard fsck)/g' /mnt/etc/mkinitcpio.conf
     arch-chroot /mnt mkinitcpio -P 
-
 }
-
-
-# VALIDATE PKG NAMES IN SCRIPT
-validate_pkgs(){
-
-    MISSING_LOG=/tmp/missing_pkgs
-
-    [[ -f $MISSING_LOG ]] && rm "$MISSING_LOG"
-
-    message="Archlinux can change package names without notice. Just making sure we're okay.  We'll be right back with a list of any changes, if any. "
-
-    TERM=ansi whiptail --backtitle "CHECKING PKG NAME CHANGES" --title \
-        "Checking for pkg name changes" --infobox "$message" 8 80
-
-    missing_pkgs=()
-
-    echo -e "\n=== MISSING PKG NAMES (IF ANY) ===\n\n" &>>$MISSING_LOG
-    
-    # initialize the package database
-    pacman -Sy   &>>$MISSING_LOG
-
-    for pkg_arr in "${all_pkgs[@]}"; do
-
-        declare -n arr_name=$pkg_arr  # make a namespace for each pkg_array
-
-        for pkg_name in "${arr_name[@]}"; do
-            if $( pacman -Sp $pkg_name &>/dev/null ); then
-                echo -n "." &>>$MISSING_LOG
-            else 
-                echo -e "\n$pkg_name from $pkg_arr had an error...\n" >>$MISSING_LOG 2>&1
-                missing_pkgs+=("$pkg_arr::$pkg_name")
-            fi
-        done
-    done
-    echo -e "\n\n=== END OF MISSING PKGS ===\n" &>>$MISSING_LOG
-    
-    whiptail --backtitle "Packages not in repos" --title \
-       "These packages not in repos" --textbox $MISSING_LOG --scrolltext 20 80
-}
-
-# DISPLAY /MNT/ETC/HOSTS
-show_hosts(){
-    whiptail --backtitle "/ETC/HOSTS" --title "Your /etc/hosts file" --textbox /etc/hosts 25 80 
-}
-
-# SHOW ERROR IF FUNCTION DIDN'T SUCCEED, USER MAY EXIT OR NOT
-show_error(){
-    message=$1
-    whiptail --backtitle "ERROR! ERROR!" --title "Error: " --msgbox "$message" 20 80
-    whiptail --backtitle "QUIT OR CONTINUE" --title "Quit or Continue?" --yesno \
-        --yes-button "Return to startmenu" --no-button "Exit DARCHI"
-    ( [[ $? -eq 0 ]] && Menu ) || exit 1
-}
-
-
-
-#################  DISK FUNCTIONS  ########################
-
-# SELECT INSTALLATION DISK
-choose_disk(){
-       depth=$(lsblk | grep 'disk' | wc -l)
-       local DISKS=()
-       for d in $(lsblk | grep disk | awk '{printf "%s\n%s \\\n",$1,$4}'); do
-            DISKS+=("$d")
-       done
-
-       whiptail --title "CHOOSE AN INSTALLATION DISK" \
-           --radiolist " Your Installation Disk: " 20 70 "$depth" \
-           "${DISKS[@]}" 3>&1 1>&2 2>&3
-}
-
-# INSTALL TO WHAT DEVICE?
-get_install_device(){
-    device=$(choose_disk)
-    part_disk "$device"
-}
-
-# FOR LOGICAL VOLUME PARTITIONS
 lv_create(){
-
+    # FOR LOGICAL VOLUME PARTITIONS
     # Choose your installation device
     disk=$(choose_disk)
     IN_DEVICE=/dev/"$disk"
@@ -369,11 +319,8 @@ lv_create(){
         BOOT_SIZE=512M
 
         # The HERE document requires zero indentation:
+        echo -ne "$BOOT_DEVICE : start= 2048, size=+$BOOT_SIZE, type=83, bootable\n$ROOT_DEVICE : type=83" > /tmp/sfdisk.cmd
 
-cat > /tmp/sfdisk.cmd << EOF
-$BOOT_DEVICE : start= 2048, size=+$BOOT_SIZE, type=83, bootable
-$ROOT_DEVICE : type=83
-EOF
         # Using sfdisk because we're talking MBR disktable now...
         sfdisk /dev/sda < /tmp/sfdisk.cmd   &>> $LOGFILE
 
@@ -470,8 +417,6 @@ EOF
     sleep 4
     Menu
 }
-
-# MOUNT PARTION
 mount_part(){
     # Mount the device ($1) and the mount point ($2)
     # 2nd parameter is mount point
@@ -497,22 +442,13 @@ mount_part(){
         TERM=ansi whiptail --title "Mount NOT successful" \
             --msgbox "$device failed mounting on $mt_pt" 8 65
         echo "!!!### ===== $device failed mounting on $mt_pt ===== ###!!!"
-        show_error "$device failed to mount on $mt_pt"
     fi
     return 0
 }
-
-# FORMAT NON-LVM DEVICE
 format_disk(){
     # I'm using 'slice' in the BSD disk slice sense here
     # I'm pretty sure it means same as 'partition'
     device=$1; slice=$2
-
-    # only do efi slice if efi_boot_mode return 0; else return 0
-
-    if [[ $slice == 'efi' ]]; then
-        $(efi_boot_mode) || show_error "You can't create an EFI partition with an MBR disktable!"
-    fi
 
     case $slice in 
         efi ) mkfs.fat -F32 "$device"           &>> $LOGFILE
@@ -539,8 +475,6 @@ format_disk(){
             --infobox "Can't make that disk * * format" 8 60 && sleep 5  && Menu ;;
     esac
 }
-
-# PARTITION NON-LVM DISK
 part_disk(){
     device=$1 ; IN_DEVICE="/dev/$device"
 
@@ -638,389 +572,6 @@ crypt_setup(){
     dd if=/dev/urandom of="$1" bs=512 count=20480     2>&1  &>>$LOGFILE
 }
 
-# DISPLAY AND CHOOSE DISK PREP METHODS
-
-## This line could be put into the menu below if we want to use disk encryption.
-## It doesn't work yet, however.
-
-#        "E"   "Prepare Installation Disk Encryption and LVM"   \
-#            "E") USE_LVM='TRUE'; USE_CRYPT='TRUE'; check_tasks 4; lv_create ;;
-            
-
-diskmenu(){
-
-    while true ; do
-
-        diskmenupick=$(whiptail --backtitle "PARTION DISKS" --title "DISK PARTITIONS" \
-            --menu "Prepare Installation Disk (Choose One)" 18 80 6 \
-        "N"   "Prepare Installation Disk with Normal Partitions" \
-        "L"   "Prepare Installation Disk with LVM"   \
-        "M"   "Manually Partition Disk with parted "   \
-        "R"   "Return to previous menu"   3>&1 1>&2 2>&3 ) 
-
-        case $diskmenupick in
-
-            "N") check_tasks 4; get_install_device ;;
-
-            "L") USE_LVM='TRUE'; check_tasks 4; lv_create ;;
-
-            "M") device=$(choose_disk); clear; bash --init-file <(parted /dev/"$device"  1>&1 2>&2) ; check_tasks 4 ;;
-
-            "R") Menu ;;
-        esac
-    done
-}
-
-###################  INSTALLATION FUNCTIONS #################################
-
-# INSTALL ESSENTIAL PACKAGES
-install_base(){
-    # install lvm2 hook if we're using LVM
-    [[ $USE_LVM == 'TRUE'  ]] && base_system+=( "lvm2" )
-    pacstrap /mnt "${base_system[@]}"   &>> $LOGFILE
-    [[ -L /dev/mapper/arch_vg-ArchRoot ]] && lvm_hooks &>>$LOGFILE
-}
-
-
-# SOME MORE ESSENTIAL NETWORK STUFF
-install_essential(){
-    arch-chroot /mnt pacman -S "${base_essentials[@]}"  --noconfirm          &>>$LOGFILE
-    arch-chroot /mnt pacman -S "${network_essentials[@]}" --noconfirm        &>>$LOGFILE
-
-    # ENABLE SERVICES
-    for service in "${my_services[@]}"; do
-        arch-chroot /mnt systemctl enable "$service"  &>>$LOGFILE 2>&1
-    done
-}
-
-# TURN ON OS-PROBER
-turnon_os_prober(){
-    echo "GRUB_DISABLE_OS_PROBER=false" >> /mnt/etc/default/grub
-}
-
-# INSTALL BOOTLOADER
-install_grub(){
-
-    TERM=ansi whiptail --backtitle "INSTALLING GRUB" --title "Installing GRUB" --infobox \
-        "Installing GRUB" 9 70
-
-    sleep 2
-    arch-chroot /mnt pacman -S grub os-prober --noconfirm  &>>$LOGFILE
-
-    # CHECK FOR OTHER OSES (By default this is not enabled)
-    turnon_os_prober
-
-    # Grub gets installed differently on efi- non-efi-systems
-    if $(efi_boot_mode); then
-
-        arch-chroot /mnt pacman -S efibootmgr --noconfirm  &>>$LOGFILE
-
-        # /boot/efi should aready be mounted
-        [[ ! -d /mnt/boot/efi ]] && echo "no /mnt/boot/efi directory!!!" &>>$LOGFILE  && exit 1 
-
-        arch-chroot /mnt grub-install "$IN_DEVICE" --target=x86_64-efi \
-            --bootloader-id=GRUB --efi-directory=/boot/efi  &>>$LOGFILE
-
-        TERM=ansi whiptail --backtitle "GRUB INSTALLED" --title "GRUB Installed" \
-            --infobox "GRUB Installed!" 9 70
-
-        sleep 2
-
-    else
-
-        arch-chroot /mnt grub-install "$IN_DEVICE"  &>>$LOGFILE
-
-        [[ $? == 0 ]] && TERM=ansi whiptail --backtitle "BOOT LOADER INSTALLED" --title \
-            "MBR Bootloader Installed" --infobox "MBR Bootloader Installed Successfully!" 9 70
-
-        whiptail --title "LOGFILE for Grub Installation" \
-            --textbox /tmp/install.log 30 79 --scrolltext
-
-        sleep 2
-    fi
-
-    # create the grub.cfg file!
-    arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg &>>$LOGFILE
-        
-    # How did we do?
-    whiptail --backtitle "GRUB.CFG INSTALLED" --title "/boot/grub/grub.cfg installed" \
-        --msgbox "Please click OK to proceed." 8 70
-    whiptail --backtitle "GRUB.CFG LOGFILE" --title "/boot/grub/grub.cfg installed" \
-        --textbox /tmp/install.log --scrolltext 38 80
-}
-
-# WIFI (BCM4360) IF NECESSARY  # wifi_drivers should equal your PCI or USB wifi adapter!!!
-wl_wifi(){
-
-    TERM=ansi whiptail --title "Installing $wifi_drivers" --infobox \
-        "Installing $wifi_drivers..." 10 70 
-
-    arch-chroot /mnt pacman -S "${wifi_drivers[@]}" --noconfirm  &>>$LOGFILE
-
-    [[ "$?" -eq 0 ]] && whiptail --title "Success!" --infobox "$wifi_drivers Installed!" 10 70
-
-    sleep 3
-}
-
-# PICK YOUR XSERVER AND DESKTOP
-pick_desktop(){
-
-    card=$(lspci | grep VGA | sed 's/^.*: //g')
-
-    driver=$(whiptail --title "Please Choose Your X Server: (spacebar)" --radiolist \
-    "You're running a $card" 20 80 7 \
-    "xf86-video-amdgpu"         "AMD GPUs"                               OFF \
-    "xf86-video-ati"            "ATI cards"                              OFF \
-    "xf86-video-intel"          "Intel Video Chipsets"                   OFF \
-    "xf86-video-nouveau"        "Nvidia Chipsets (Open Source)"          OFF \
-    "xf86-video-openchrome"     "Chromebook video chipsets"              OFF \
-    "xf86-video-vmware"         "Use for virtual machines"               ON \
-    "xf86-video-fbdev"          "Only for frame buffer devices!!!"       OFF 3>&1 1>&2 2>&3 )  
-
-    # This selection should overwrite the global choice if necessary
-    graphics_driver=( "$driver" )
-
-    choice=$(whiptail --title "Please Choose Your Desktop: (spacebar)" --radiolist \
-    "Default Desktop is Cinnamon" 20 80 9 \
-    "Cinnamon" "Gnome based desktop that is intuitive and familiar"        ON \
-    "Mate"     "Originally based on Gnome 2, traditional, lightweight"     OFF \
-    "Gnome"    "Modern and even bleeding Edge Desktop"                     OFF \
-    "XFCE"     "Lightweight and full featured Desktop"                     OFF \
-    "KDE"      "A large but heavy-weight DE based on QT toolkit"           OFF \
-    "i3gaps"   "A very popular tiling window manager"                      OFF \
-    "Qtile"    "A terrific tiling window manager written in Python"        OFF \
-    "Xmonad"   "A favorite of tiling WM fans, written in Haskell"          OFF \
-    "Awesome"  "Another favorite tiling WM written in Lua"                 OFF 3>&1 1>&2 2>&3 )
-
-    case $choice in 
-        "Cinnamon" ) mydesktop=( "${cinnamon_desktop[@]}" ) ;;
-        "Mate"     ) mydesktop=( "${mate_desktop[@]}" ) ;;
-        "Gnome"    ) mydesktop=( "${gnome_desktop[@]}" )   ;;
-        "XFCE"     ) mydesktop=( "${xfce_desktop[@]}" )  ;;
-        "KDE"      ) mydesktop=( "${kde_desktop[@]}" )  ;;
-        "i3gaps"   ) mydesktop=( "${i3gaps_desktop[@]}" )  ;;
-        "Qtile"    ) mydesktop=( "${qtile_desktop[@]}" ) ;;
-        "Xmonad"   ) mydesktop=( "${xmonad_desktop[@]}" ) ;;
-        "Awesome"  ) mydesktop=( "${awesome_desktop[@]}" ) ;;
-        * )          mydesktop=( "${cinnamon_desktop[@]}" )
-    esac
-}
-
-# INSTALL XORG AND DESKTOP
-install_desktop(){
-
-    # UPDATE FROM LATEST DESKTOP CHOICE
-    desktop=( "${mydesktop[@]}" )
-
-    # EXTRA PACKAGES, FONTS, THEMES, CURSORS
-    arch-chroot /mnt pacman -S "${basic_x[@]}" --noconfirm   &>>$LOGFILE
-    arch-chroot /mnt pacman -S "${extra_x1[@]}" --noconfirm    &>>$LOGFILE
-    arch-chroot /mnt pacman -S "${extra_x2[@]}" --noconfirm   &>>$LOGFILE
-    arch-chroot /mnt pacman -S "${extra_x3[@]}" --noconfirm   &>>$LOGFILE
-    arch-chroot /mnt pacman -S "${extra_x4[@]}" --noconfirm   &>>$LOGFILE
-    arch-chroot /mnt pacman -S "${devel_stuff[@]}" --noconfirm   &>>$LOGFILE
-    arch-chroot /mnt pacman -S "${printing_stuff[@]}" --noconfirm   &>>$LOGFILE
-    arch-chroot /mnt pacman -S "${multimedia_stuff[@]}" --noconfirm   &>>$LOGFILE
-
-    # DRIVER FOR GRAPHICS CARD, DESKTOP, DISPLAY MGR
-    arch-chroot /mnt pacman -S "${display_mgr[@]}" --noconfirm  &>>$LOGFILE 
-    arch-chroot /mnt pacman -S "${graphics_driver[@]}" --noconfirm    &>>$LOGFILE 
-
-    ## MYDESKTOP gets installed here, either default or user choice
-    #arch-chroot /mnt pacman -S "${mydesktop[@]}" --noconfirm   &>>$LOGFILE
-    arch-chroot /mnt pacman -S "${desktop[@]}" --noconfirm   &>>$LOGFILE
-    arch-chroot /mnt systemctl enable "${display_mgr[@]}" &>>$LOGFILE 2>&1
-
-    ## Give the lightdm service a background
-    sed -i 's|^#background=|background=/usr/share/backgrounds/archlinux/wave.png|g' /mnt/etc/lightdm/lightdm-gtk-greeter.conf
-}
-
-install_extra_stuff(){
-    arch-chroot /mnt pacman -S "${all_extras[@]}" --noconfirm   &>>$LOGFILE
-
-    # restart services so lightdm gets all WM picks
-    for service in "${my_services[@]}"; do
-        arch-chroot /mnt systemctl enable "$service"   &>>$LOGFILE
-    done
-}
-
-
-#################### CONFIGURATION FUNCTIONS  ###################################
-
-# GENERATE FSTAB
-gen_fstab(){
-    #clear
-    TERM=ansi whiptail --title "Generating FSTAB" --infobox "Generating /mnt/etc/fstab" 8 75
-    genfstab -U /mnt >> /mnt/etc/fstab
-    sleep 3
-
-    # take a look at new fstab file
-    whiptail --backtitle "Checkout New /etc/fstab" --title \
-        "Here's your new /etc/fstab" --textbox /mnt/etc/fstab --scrolltext 30 85
-}
-
-# TIMEZONE
-set_tz(){
-    
-    TERM=ansi whiptail --title "Setting timezone to $TIMEZONE" --infobox \
-        "Setting Timezone to $TIMEZONE" 8 75
-    arch-chroot /mnt ln -sf /usr/share/zoneinfo/"$TIMEZONE" /etc/localtime
-    arch-chroot /mnt hwclock --systohc --utc 
-    message=$(arch-chroot /mnt date)
-    whiptail --backtitle "SETTING HWCLOCK and TIMEZONE and Hardware Date" --title \
-        "HW CLOCK AND TIMEZONE SET to $TIMEZONE" --msgbox "$message" 8 78
-}
-
-# LOCALE
-set_locale(){
-
-    LOCALE="en_US.UTF-8"
-
-    arch-chroot /mnt sed -i "s/#$LOCALE/$LOCALE/g" /etc/locale.gen
-    arch-chroot /mnt locale-gen   &>>$LOGFILE
-
-    echo "LANG=en_US.UTF-8" > /mnt/etc/locale.conf 
-    export LANG="en_US.UTF-8"
-
-    result=$(cat /mnt/etc/locale.conf)
-    whiptail --backtitle "LOCALE SET TO $LOCALE" --title "Locale: $LOCALE" \
-        --msgbox "$result" 8 79
-}
-
-# HOSTNAME
-set_hostname(){
-    namevar=$(whiptail --title "Hostname" --inputbox \
-        "What is your new hostname?" 20 40 3>&1 1>&2 2>&3)
-    echo "$namevar" > /mnt/etc/hostname
-
-cat > /mnt/etc/hosts <<HOSTS
-127.0.0.1      localhost
-::1            localhost
-127.0.1.1      $namevar.localdomain     $namevar
-HOSTS
-
-    message=$(echo -e "/etc/hostname and /etc/hosts files configured...\n" && echo)
-    message+=$(echo -e "\n/etc/hostname: \n" && cat /mnt/etc/hostname)
-    message+=$(echo -e "\n\n/etc/hosts: \n" && cat /mnt/etc/hosts)
-    whiptail --backtitle "/etc/hostname & /etc/hosts" --title "Files created" \
-        --msgbox "$message" 25 75
-}
-
-
-# ADD A USER ACCT
-add_user_acct(){
-
-    TERM=ansi whiptail --backtitle "ADDING SUDO USER" --title \
-        "Adding sudo + user acct..." --infobox "Adding sudo user to new system" 10 50 
-
-    sleep 2
-
-    arch-chroot /mnt pacman -S sudo bash-completion sshpass  --noconfirm      &>>$LOGFILE
-    arch-chroot /mnt sed -i 's/# %wheel/%wheel/g' /etc/sudoers
-    arch-chroot /mnt sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/# %wheel ALL=(ALL) NOPASSWD: ALL/g' /etc/sudoers  
-
-    sudo_user=$(whiptail --backtitle "SUDO USERNAME" --title \
-        "Please provide sudo username" --inputbox \
-        "Please provide a sudo username: " 8 40 3>&1 1>&2 2>&3 )
-
-    TERM=ansi whiptail --title "Creating sudo user and adding to wheel" --infobox \
-        "Creating $sudo_user and adding $sudo_user to sudoers..." 10 70
-
-    arch-chroot /mnt useradd -m -G wheel "$sudo_user"  &>>$LOGFILE
-    sleep 2  # Need this so user has time to read infobox above
-
-    user_pass=$(whiptail --passwordbox "Please enter your new user's password: " --title \
-        "Getting user password" 8 78 3>&1 1>&2 2>&3 )
-
-    echo -e "$user_pass\n$user_pass" | arch-chroot /mnt passwd "$sudo_user"  &>>$LOGFILE
-
-    TERM=ansi whiptail --title "Sudo User Password Created" --infobox \
-        "sudo user password updated" 10 70
-    sleep 3
-}
-
-Menu(){
-    while true ; do
-        menupick=$(whiptail --title "Arch Linux Desktop Installer" --menu "Your choice?" 25 50 20 \
-            "Keyboard Layout" "($KeyboardLayout)" \
-            "Time Zone" "($TimeZone)" \
-            "Network Connection" "($NetworkConnection)" \
-            "D"   "[$(echo ${completed_tasks[4]}] Prepare Installation Disk)" \
-            "B"   "[$(echo ${completed_tasks[5]}] Install Base System)" \
-            "F"   "[$(echo ${completed_tasks[6]}] New FSTAB and TZ/Locale)" \
-            "H"   "[$(echo ${completed_tasks[7]}] Set new hostname)" \
-            "R"   "[$(echo ${completed_tasks[8]}] Set root password)" \
-            "M"   "[$(echo ${completed_tasks[9]}] Install More network essentials)" \
-            "U"   "[$(echo ${completed_tasks[10]}] Add user + sudo account) " \
-            "W"   "[$(echo ${completed_tasks[11]}] Install Wifi Drivers )" \
-            "G"   "[$(echo ${completed_tasks[12]}] Install grub)" \
-            "E"   "[$(echo ${completed_tasks[13]}] Choose Graphics Driver and Desktop Environment)" \
-            "X"   "[$(echo ${completed_tasks[14]}] Install Xorg + Desktop)" \
-            "I"   "[$(echo ${completed_tasks[15]}] Install Extra Window Mgrs)" \
-            "P"   "[$(echo ${completed_tasks[16]}] Check for pkg name changes)" \
-            "Q"   "[$(echo ${completed_tasks[17]}] Quit Script) "  3>&1 1>&2 2>&3
-        )
-        case $menupick in
-            "Keyboard Layout") KeyboardLayout; ;;
-            "Time Zone") TimeZone; ;;
-            "Network Connection")  NetworkConnection; ;;
-
-            "D")  diskmenu ;;
-
-            "B")  USE_LVM='TRUE'; 
-                  specialprogressgauge install_base "Installing base system..." "INSTALLING BASE SYSTEM"; 
-                  whiptail --backtitle "BASE SYSTEM INSTALLED" --title "Base system installed!" \
-                      --msgbox "Your base system has been installed.  Click OK to continue." 10 80;
-                  whiptail --backtitle "YOUR LOGFILE FOR INSTALLATION" --title "LOGFILE for your installation" \
-                      --textbox /tmp/install.log --scrolltext 30 80;
-                  check_tasks 5 ;;
-
-            "F")  gen_fstab; set_locale; set_tz; check_tasks 6 ;;
-
-            "H")  set_hostname; check_tasks 7 ;;
-
-            "R")  password=$(whiptail --passwordbox "Please set your new root password..." \
-                      --backtitle "SETTING ROOT PASSWORD" --title "Set new root password"   8 48 3>&1 1>&2 2>&3);
-                  echo -e "$password\n$password" | arch-chroot /mnt passwd;
-                  check_tasks 8 ;; 
-
-            "M")  specialprogressgauge install_essential "Installing dhcpcd, sshd, ssh, networkmanager, etc..." \
-                  "INSTALLING NETWORK ESSENTIALS "; 
-                  whiptail --title "Network Essentials Installed" --msgbox "Network Essentials Installed.  OK to continue." 8 78;
-                  whiptail --title "Current Install Progress" --textbox /tmp/install.log --scrolltext 25 80;
-                  check_tasks 9 ;;
-
-            "U")  add_user_acct; check_tasks 10 ;;
-
-            "W")  wl_wifi; check_tasks 11 ;;
-
-            "G")  install_grub; check_tasks 12 ;;
-            
-            "E")  pick_desktop; find_card; check_tasks 13 ;;
-
-            "X")  specialprogressgauge install_desktop "Installing Xorg and Desktop Resources..." "INSTALLING XORG"; 
-                  whiptail --backtitle "X AND DESKTOPS INSTALLED" --title "Desktops Installed" \
-                      --msgbox "Xorg and Extras and Desktops are installed.  OK to check install.log." 8 70 ;
-                  whiptail --backtitle "CHECK INSTALL LOGFILE" --title "Xorg Install Log" \
-                      --textbox /tmp/install.log --scrolltext 25 80 ;
-                  check_tasks 14 ;;
-
-            "I")  specialprogressgauge install_extra_stuff "Installing All My Xorg Extras" "ALL MY EXTRAS FOR XORG"; 
-                  whiptail --backtitle "XTRA X STUFF INSTALLED" --title "Extra Desktops Installed" \
-                      --msgbox "Extra Goodies Installed.  Click OK to see Install Log." 8 70 ;
-                  whiptail --backtitle "CHECK INSTALL LOGFILE" --title "Extra Xorg Stuff Install Log" \
-                      --textbox /tmp/install.log --scrolltext 25 80 ;
-                  check_tasks 15 ;;
-
-            "P")  validate_pkgs; check_tasks 16 ;;
-
-            "Q")  TERM=ansi whiptail --title "exit installer" \
-                  --infobox "Type 'shutdown -h now' and then remove USB/DVD, then reboot" 10 60; 
-                  sleep 2; exit 0 ;;
-        esac
-    done
-}
-
-PreTest
-Menu
+prepare
+menu
 

@@ -172,8 +172,7 @@ menu(){
             "User Account" "$user" \
             "Network" "$networkconnection" \
             "CPU/GPU" "$cpu / $gpu" \
-            "Partition" "" \
-            "Install" "" \
+            "Partition" "$disk" \
             "Cancel" "" 3>&1 1>&2 2>&3
         )
         case $menupick in
@@ -183,14 +182,13 @@ menu(){
             "Root Password") set_root; ;;
             "User Account") set_user; ;;
             "CPU/GPU") set_cpugpu; ;;
-            "Partition") get_install_device ;;
-            "Install") specialprogressgauge install_general "Installing Xorg and Desktop Resources..." "INSTALLING XORG" ;;
+            "Disk") set_disk ;;
             "Cancel") exit 0 ;;
         esac
     done
 }
 
-
+# "Install") specialprogressgauge install_general "Installing Xorg and Desktop Resources..." "INSTALLING XORG" ;;
 ####################################
 
 find_card(){
@@ -572,6 +570,5 @@ crypt_setup(){
     dd if=/dev/urandom of="$1" bs=512 count=20480     2>&1  &>>$LOGFILE
 }
 
-prepare
 menu
 

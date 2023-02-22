@@ -92,7 +92,6 @@ install_disk(){
         esac
     done
     install_base
-    menue
 }
 install_disk_wipe(){
     local rootsize=3
@@ -119,7 +118,7 @@ install_disk_wipe(){
         echo 3
         echo 23
         echo w
-    ) | fdisk /dev/$disk
+    ) | fdisk --wipe-partitions always /dev/$disk
     mkfs.fat -F 32 "/dev/${disk}1"
     mkswap "/dev/${disk}2"
     mkfs.ext4 "/dev/${disk}3"

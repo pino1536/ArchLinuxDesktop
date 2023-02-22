@@ -25,7 +25,7 @@ gpu="-"
 disk="-"
 
 prepare(){
-    if $(ping -c 3 archlinux.org &>/dev/null); then
+    if $(ping -c 1 archlinux.org &>/dev/null); then
         networkconnection="Online"
     else
         networkconnection="Offline"
@@ -33,41 +33,41 @@ prepare(){
 }
 
 set_keymap(){
-    keymap=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 25 50 20 "de" "German" "fr" "France" "ru" "Russia" "uk" "Unitet Kindom" "us" "USA" 3>&1 1>&2 2>&3)
+    keymap=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 25 50 11 "de" "German" "fr" "France" "ru" "Russia" "uk" "Unitet Kindom" "us" "USA" 3>&1 1>&2 2>&3)
     loadkeys $keymap
 }
 
 set_timezone(){
     local getsubzones=()
     local subzones=()
-    zone=$(whiptail --title "Time Zone" --menu "Select continent:" 25 50 20 "Africa" "" "America" "" "Antarctica" "" "Asia" "" "Australia" "" "Europe" "" 3>&1 1>&2 2>&3)
+    zone=$(whiptail --title "Time Zone" --menu "Select continent:" 25 50 11 "Africa" "" "America" "" "Antarctica" "" "Asia" "" "Australia" "" "Europe" "" 3>&1 1>&2 2>&3)
     getsubzones=($(ls /usr/share/zoneinfo/$zone))
     for i in ${getsubzones[@]}; do
         subzones+=($i "")
     done
-    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 25 50 20 "${subzones[@]}" 3>&1 1>&2 2>&3)
+    subzone=$(whiptail --title "Time Zone" --menu "Select city:" 25 50 11 "${subzones[@]}" 3>&1 1>&2 2>&3)
 }
 
 set_hostname(){
-    hostname=$(whiptail --title "Hostname" --inputbox "What is your new hostname?" 20 40 3>&1 1>&2 2>&3)
+    hostname=$(whiptail --title "Hostname" --inputbox "What is your new hostname?" 25 50 3>&1 1>&2 2>&3)
 }
 
 set_root(){
-    rootpw=$(whiptail --title "Set new root password" --passwordbox "Please set your new root password..." 8 48 3>&1 1>&2 2>&3)
+    rootpw=$(whiptail --title "Set new root password" --passwordbox "Please set your new root password..." 25 50 3>&1 1>&2 2>&3)
     rootset="Set"
 }
 
 set_user(){
-    user=$(whiptail --title "Please provide sudo username" --inputbox "Please provide a sudo username: " 8 40 3>&1 1>&2 2>&3)
-    userpw=$(whiptail --title "Getting user password" --passwordbox "Please enter your new user's password: " 8 78 3>&1 1>&2 2>&3)
+    user=$(whiptail --title "Please provide sudo username" --inputbox "Please provide a sudo username: " 25 50 3>&1 1>&2 2>&3)
+    userpw=$(whiptail --title "Getting user password" --passwordbox "Please enter your new user's password: " 25 50 3>&1 1>&2 2>&3)
 }
 
 set_cpu(){
-    cpu=$(whiptail --title "GPU" --menu "Select CPU:" 25 50 20 "AMD" "" "Intel" "" 3>&1 1>&2 2>&3)
+    cpu=$(whiptail --title "GPU" --menu "Select CPU:" 25 50 11 "AMD" "" "Intel" "" 3>&1 1>&2 2>&3)
 }
 
 set_gpu(){
-    gpu=$(whiptail --title "GPU" --menu "Select GPU:" 25 50 20 "AMD" "" "Nvidia" "" "Intel" "" 3>&1 1>&2 2>&3)
+    gpu=$(whiptail --title "GPU" --menu "Select GPU:" 25 50 11 "AMD" "" "Nvidia" "" "Intel" "" 3>&1 1>&2 2>&3)
     # card=$(lspci | grep VGA | sed 's/^.*: //g')
 }
 
@@ -76,11 +76,11 @@ set_disk(){
     for i in $(lsblk /dev/hd* /dev/sd* /dev/nvme* --nodeps --scsi --noheadings --output NAME,SIZE); do
         disks+=(${i})
     done
-    disk=$(whiptail --title "Select Disk" --menu "Select disk device:" 25 50 20 "${disks[@]}" 3>&1 1>&2 2>&3)
+    disk=$(whiptail --title "Select Disk" --menu "Select disk device:" 25 50 11 "${disks[@]}" 3>&1 1>&2 2>&3)
 }
 install_disk(){
     while true ; do
-        menupick=$(whiptail --title "Disk Partition and Formating" --menu "Default Partition Layout: EFI (500mb), Swap (4gb), Root (?)" 25 50 10 \
+        menupick=$(whiptail --title "Disk Partition and Formating" --menu "Default Partition Layout: EFI (500mb), Swap (4gb), Root (?)" 25 50 11 \
             "Wipe All" "Wipe Disk and create default Partitions" \
             "Dualboot" "Use the existing Boot Partition" \
             "Manual" "The Command Line way." \
@@ -188,7 +188,7 @@ install_desktop(){
 menu(){
     local c="Keyboard Layout"
     while true ; do
-        menupick=$(whiptail --title "Arch Linux Desktop Installer" --default-item "${c}" --menu "Install Settings:" 25 50 10 \
+        menupick=$(whiptail --title "Arch Linux Desktop Installer" --default-item "${c}" --menu "Install Settings:" 25 50 11 \
             "Keyboard Layout" "${keymap}" \
             "Time Zone" "${subzone}" \
             "Hostname" "${hostname}" \
@@ -507,5 +507,6 @@ crypt_setup(){
     dd if=/dev/urandom of="$1" bs=512 count=20480     2>&1  &>>$LOGFILE
 }
 
+prepare
 menu
 

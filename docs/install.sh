@@ -120,10 +120,12 @@ install_disk_wipe(){
         echo 23
         echo w
     ) | fdisk /dev/$disk
-
-    # format_disk "$ROOT_SLICE" root
-    # format_disk "$EFI_SLICE" efi
-    # format_disk "$SWAP_SLICE" swap
+    mkfs.fat -F 32 "/dev/${disk}1"
+    mkswap "/dev/${disk}2"
+    mkfs.ext4 "/dev/${disk}3"
+    mount --mkdir /dev/${disk}1 /mnt/boot
+    mount /dev/${disk}3 /mnt
+    swapon /dev/${disk}2
     menu
 }
 install_base(){
@@ -469,36 +471,6 @@ mount_part(){
         echo "!!!### ===== $device failed mounting on $mt_pt ===== ###!!!"
     fi
     return 0
-}
-format_disk(){
-    # I'm using 'slice' in the BSD disk slice sense here
-    # I'm pretty sure it means same as 'partition'
-    device=$1; slice=$2
-
-    case $slice in 
-        efi ) mkfs.fat -F32 "$device"           &>> $LOGFILE
-            mount_part "$device" /mnt/boot/efi  &>> $LOGFILE
-            ;;
-        home  ) mkfs.ext4 "$device"             &>> $LOGFILE
-            mkdir /mnt/home                     &>> $LOGFILE
-            mount_part "$device" /mnt/home      &>> $LOGFILE
-            ;;
-        boot  ) mkfs.ext4 "$device"             &>> $LOGFILE
-            mount_part $device /mnt/boot        &>> $LOGFILE
-            ;;
-        root  ) mkfs.ext4 "$device"             &>> $LOGFILE
-            mount_part "$device" /mnt           &>> $LOGFILE
-            ;;
-        swap  ) mkswap "$device"                &>> $LOGFILE
-                swapon "$device"                &>> $LOGFILE
-
-                TERM=ansi whiptail --title "Swap space now on" \
-                    --infobox "Swap space should now be turned on..." 8 50
-                sleep 3
-            ;;
-        * ) whiptail --title "Bad disk format request" \
-            --infobox "Can't make that disk * * format" 8 60 && sleep 5  && Menu ;;
-    esac
 }
 
 crypt_setup(){

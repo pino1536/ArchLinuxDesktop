@@ -1,31 +1,13 @@
 #!/usr/bin/env bash
 
-# efi_boot_mode(){( $(ls /sys/firmware/efi/efivars &>/dev/null) && return 0 ) || return 1}
-
 kde_desktop=( plasma plasma-wayland-session kde-applications plasma-workspace-wallpapers )
 devel_stuff=( git nodejs npm npm-check-updates ruby )
 printing_stuff=( system-config-printer foomatic-db foomatic-db-engine gutenprint cups cups-pdf cups-filters cups-pk-helper ghostscript gsfonts )
 multimedia_stuff=( brasero sox eog shotwell imagemagick sox cmus mpg123 alsa-utils cheese )
 all_extras=( "${kde_desktop[@]}" "${devel_stuff[@]}" "${printing_stuff[@]}" "${multimedia_stuff[@]}" )
 
-# Can't show checkmarks very easily...  This array will help show the user which tasks are completed or not
-
-keymap="-"
-zone="-"
-subzone="-"
-hostname="-"
-rootpw="-"
-rootset="-"
-user="-"
-userpw="-"
 network="-"
-cpu="-"
-gpu="-"
-disk="-"
-partitiontype="-"
-rootsize="full"
-
-prepare(){
+set_network(){
     if $(ping -c 1 archlinux.org &>/dev/null); then
         network="Online"
     else
@@ -33,11 +15,31 @@ prepare(){
     fi
 }
 
-set_keymap(){
-    keymap=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 25 50 11 "de" "German" "fr" "France" "ru" "Russia" "uk" "Unitet Kindom" "us" "USA" 3>&1 1>&2 2>&3)
-    loadkeys $keymap
+disk="-"
+set_disk(){
+    local disks=()
+    for i in $(lsblk /dev/hd* /dev/sd* /dev/nvme* --nodeps --scsi --noheadings --output NAME,SIZE); do
+        disks+=(${i})
+    done
+    disk=$(whiptail --title "Select Disk" --menu "Select disk device:" 25 50 11 "${disks[@]}" 3>&1 1>&2 2>&3)
 }
 
+partitiontype="-"
+set_partitiontype(){
+    partitiontype=$(whiptail --title "Disk Partition and Formating" --menu "Default Partition Layout:\nEFI (500mb), Swap (4gb), Root (?)" 25 50 11 \
+        "FullWipe" "Wipe Disk, default Partitions" \
+        "DualBoot" "Use the existing Boot Partition" \
+        "Custom" "The Command Line way." 3>&1 1>&2 2>&3
+    )
+}
+
+cpu="-"
+set_cpu(){
+    cpu=$(whiptail --title "GPU" --menu "Select CPU:" 25 50 11 "AMD" "" "Intel" "" 3>&1 1>&2 2>&3)
+}
+
+zone="-"
+subzone="-"
 set_timezone(){
     local getsubzones=()
     local subzones=()
@@ -49,119 +51,81 @@ set_timezone(){
     subzone=$(whiptail --title "Time Zone" --menu "Select city:" 25 50 11 "${subzones[@]}" 3>&1 1>&2 2>&3)
 }
 
+keymap="-"
+set_keymap(){
+    keymap=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout:" 25 50 11 "de" "German" "fr" "France" "ru" "Russia" "uk" "Unitet Kindom" "us" "USA" 3>&1 1>&2 2>&3)
+}
+
+hostname="-"
 set_hostname(){
     hostname=$(whiptail --title "Hostname" --inputbox "What is your new hostname?" 25 50 3>&1 1>&2 2>&3)
 }
 
+rootpw="-"
 set_root(){
     rootpw=$(whiptail --title "Set new root password" --passwordbox "Please set your new root password..." 25 50 3>&1 1>&2 2>&3)
-    rootset="Set"
 }
 
+user="-"
+userpw="-"
 set_user(){
     user=$(whiptail --title "Please provide sudo username" --inputbox "Please provide a sudo username: " 25 50 3>&1 1>&2 2>&3)
     userpw=$(whiptail --title "Getting user password" --passwordbox "Please enter your new user's password: " 25 50 3>&1 1>&2 2>&3)
 }
 
-set_cpu(){
-    cpu=$(whiptail --title "GPU" --menu "Select CPU:" 25 50 11 "AMD" "" "Intel" "" 3>&1 1>&2 2>&3)
-}
-
+gpu="-"
 set_gpu(){
     gpu=$(whiptail --title "GPU" --menu "Select GPU:" 25 50 11 "AMD" "" "Nvidia" "" "Intel" "" 3>&1 1>&2 2>&3)
     # card=$(lspci | grep VGA | sed 's/^.*: //g')
 }
 
-set_disk(){
-    local disks=()
-    for i in $(lsblk /dev/hd* /dev/sd* /dev/nvme* --nodeps --scsi --noheadings --output NAME,SIZE); do
-        disks+=(${i})
-    done
-    disk=$(whiptail --title "Select Disk" --menu "Select disk device:" 25 50 11 "${disks[@]}" 3>&1 1>&2 2>&3)
-}
-
-set_partitiontype(){
-    partitiontype=$(whiptail --title "Disk Partition and Formating" --menu "Default Partition Layout:\nEFI (500mb), Swap (4gb), Root (?)" 25 50 11 \
-        "FullWipe" "Wipe Disk, default Partitions" \
-        "DualBoot" "Use the existing Boot Partition" \
-        "Manual" "The Command Line way." 3>&1 1>&2 2>&3
-    )
-}
-
-set_rootsize(){
-    rootsize=$(whiptail --title "Root Size" --inputbox "Set root size (emty for all)" 25 50 3>&1 1>&2 2>&3)
-}
-
-set_menu(){
-    local c="Keyboard Layout"
-    while true ; do
-        menupick=$(whiptail --title "Arch Linux Desktop Installer" --default-item "${c}" --menu "Install Settings:" 25 50 11 \
-            "Keyboard Layout" "${keymap}" \
-            "Time Zone" "${subzone}" \
-            "Hostname" "${hostname}" \
-            "Root Password" "${rootset}" \
-            "User Account" "${user}" \
-            "Network" "${network}" \
-            "CPU" "${cpu}" \
-            "GPU" "${gpu}" \
-            "Disk" "${disk}" \
-            "Partition Type" "${partitiontype}" \
-            "Root Size" "${rootsize}" \
-            "Cancel                 " "" 3>&1 1>&2 2>&3
-        )
-        case $menupick in
-            "Keyboard Layout") set_keymap; c="Keyboard Layout" ;;
-            "Time Zone") set_timezone; c="Time Zone" ;;
-            "Hostname") set_hostname; c="Hostname" ;;
-            "Root Password") set_root; c="Root Password" ;;
-            "User Account") set_user; c="User Account" ;;
-            "Network") c="Network" ;;
-            "CPU") set_cpu; c="CPU" ;;
-            "GPU") set_gpu; c="GPU" ;;
-            "Disk") set_disk; c="Disk" ;;
-            "Partition Type") set_partitiontype; c="Partition Type" ;;
-            "Root Size") set_rootsize; c="Root Size" ;;
-            "Cancel                 ") exit 0 ;;
-        esac
-    done
-}
-
 ald_preinstall(){
     # 1.9 Partition the disks
-    (
-        echo g
-        echo n
-        echo 1
-        echo  
-        echo +512M
-        echo t
-        echo 1
-        echo n
-        echo 2
-        echo  
-        echo +4048M
-        echo t
-        echo 2
-        echo 19
-        echo n
-        echo 3
-        echo  
-        echo +${rootsize}G
-        echo t
-        echo 3
-        echo 23
-        echo w
-    ) | fdisk --wipe-partitions always /dev/${disk}
+    set_disk
+    set_partitiontype
+    case ${partitiontype} in
+        "FullWipe")
+            (
+                echo g
+                echo n
+                echo 1
+                echo  
+                echo +512M
+                echo t
+                echo 1
+                echo n
+                echo 2
+                echo  
+                echo +4048M
+                echo t
+                echo 2
+                echo 19
+                echo n
+                echo 3
+                echo  
+                echo  
+                echo t
+                echo 3
+                echo 23
+                echo w
+            ) | fdisk --wipe-partitions always /dev/${disk}
+            # 1.10 Format the partitions
+            mkfs.fat -F 32 "/dev/${disk}1"
+            mkswap "/dev/${disk}2"
+            mkfs.ext4 "/dev/${disk}3"
 
-    # 1.10 Format the partitions
-    mkfs.fat -F 32 "/dev/${disk}1"
-    mkswap "/dev/${disk}2"
-    mkfs.ext4 "/dev/${disk}3"
-
-    # 1.11 Mount the file systems
-    mount --mkdir /dev/${disk}1 /mnt/boot
-    swapon /dev/${disk}2
-    mount /dev/${disk}3 /mnt
+            # 1.11 Mount the file systems
+            mount --mkdir /dev/${disk}1 /mnt/boot
+            swapon /dev/${disk}2
+            mount /dev/${disk}3 /mnt
+        ;;
+        "DualBoot")
+            # later
+        ;;
+        "Custom")
+            fdisk --wipe-partitions always /dev/${disk}
+        ;;
+    esac
 }
 
 ald_install(){
@@ -169,6 +133,7 @@ ald_install(){
     reflector
 
     # 2.2 Install essential packages
+    set_cpu
     local microcode=""
     case ${cpu} in
         "AMD") microcode="amd-ucode" ;;
@@ -185,16 +150,19 @@ ald_config(){
     arch-chroot /mnt
 
     # 3.3 Time zone
+    set_timezone
     ln -sf /usr/share/zoneinfo/${zone}/${subzone} /etc/localtime
     hwclock --systohc
 
     # 3.4 Localization
+    set_keymap
     echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
     locale-gen
     echo "LANG=en_US.UTF-8" > /etc/locale.conf
     echo "KEYMAP=${keymap}" > /etc/vconsole.conf
 
     # 3.5 Network configuration
+    set_hostname
     echo ${hostname} > /mnt/etc/hostname
     echo -ne "127.0.0.1\tlocalhost\n::1\tlocalhost\n127.0.1.1\t${hostname}.localdomain\t${hostname}" > /mnt/etc/hosts
     systemctl enable NetworkManager
@@ -203,7 +171,9 @@ ald_config(){
     # not needed
 
     # 3.7 Root password
+    set_root
     echo -e "${rootpw}\n${rootpw}" | passwd
+    set_user
     useradd -m -G wheel "${user}"
     echo -e "${userpw}\n${userpw}" | passwd "${user}"
 
@@ -230,6 +200,7 @@ ald_desktop(){
     arch-chroot /mnt pacman -S "${all_extras[@]}" --noconfirm
 }
 
-set_menu
+ald_preinstall
+ald_install
 ald_config
-ald_desktop
+# ald_desktop

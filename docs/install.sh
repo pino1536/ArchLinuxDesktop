@@ -18,16 +18,18 @@ rootpw="-"
 rootset="-"
 user="-"
 userpw="-"
+network="-"
 cpu="-"
 gpu="-"
 disk="-"
-rootsize="all"
+partitiontype="-"
+rootsize="full"
 
 prepare(){
     if $(ping -c 1 archlinux.org &>/dev/null); then
-        networkconnection="Online"
+        network="Online"
     else
-        networkconnection="Offline"
+        network="Offline"
     fi
 }
 
@@ -78,25 +80,16 @@ set_disk(){
     disk=$(whiptail --title "Select Disk" --menu "Select disk device:" 25 50 11 "${disks[@]}" 3>&1 1>&2 2>&3)
 }
 
-set_rootsize(){
-    rootsize=$(whiptail --title "Root Size" --inputbox "Set root size (emty for all)" 25 50 3>&1 1>&2 2>&3)
+set_partitiontype(){
+    partitiontype=$(whiptail --title "Disk Partition and Formating" --menu "Default Partition Layout:\nEFI (500mb), Swap (4gb), Root (?)" 25 50 11 \
+        "FullWipe" "Wipe Disk, default Partitions" \
+        "DualBoot" "Use the existing Boot Partition" \
+        "Manual" "The Command Line way." 3>&1 1>&2 2>&3
+    )
 }
 
-set_disk(){
-    while true ; do
-        menupick=$(whiptail --title "Disk Partition and Formating" --menu "Default Partition Layout: EFI (500mb), Swap (4gb), Root (?)" 25 50 11 \
-            "Wipe All" "Wipe Disk and create default Partitions" \
-            "Dualboot" "Use the existing Boot Partition" \
-            "Manual" "The Command Line way." \
-            "Cancel" "" 3>&1 1>&2 2>&3
-        )
-        case $menupick in
-            "Wipe All") install_disk_wipe ;;
-            "Dualboot") install_disk_dualboot ;;
-            "Manual") install_disk_manual ;;
-            "Cancel") menu ;;
-        esac
-    done
+set_rootsize(){
+    rootsize=$(whiptail --title "Root Size" --inputbox "Set root size (emty for all)" 25 50 3>&1 1>&2 2>&3)
 }
 
 set_menu(){
@@ -108,10 +101,12 @@ set_menu(){
             "Hostname" "${hostname}" \
             "Root Password" "${rootset}" \
             "User Account" "${user}" \
-            "Network" "${networkconnection}" \
+            "Network" "${network}" \
             "CPU" "${cpu}" \
             "GPU" "${gpu}" \
             "Disk" "${disk}" \
+            "Partition Type" "${partitiontype}" \
+            "Root Size" "${rootsize}" \
             "Cancel                 " "" 3>&1 1>&2 2>&3
         )
         case $menupick in
@@ -120,10 +115,12 @@ set_menu(){
             "Hostname") set_hostname; c="Hostname" ;;
             "Root Password") set_root; c="Root Password" ;;
             "User Account") set_user; c="User Account" ;;
-            "Network") mc="Network" ;;
+            "Network") c="Network" ;;
             "CPU") set_cpu; c="CPU" ;;
             "GPU") set_gpu; c="GPU" ;;
             "Disk") set_disk; c="Disk" ;;
+            "Partition Type") set_partitiontype; c="Partition Type" ;;
+            "Root Size") set_rootsize; c="Root Size" ;;
             "Cancel                 ") exit 0 ;;
         esac
     done

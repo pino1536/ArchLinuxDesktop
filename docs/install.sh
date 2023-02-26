@@ -30,7 +30,7 @@
                 echo 3
                 echo 23
                 echo w
-            ) | fdisk --wipe-partitions always /dev/${disk}
+            ) | fdisk -w always -W always /dev/${disk}
             mkfs.fat -F 32 "/dev/${disk}1"
             mkswap "/dev/${disk}2"
             mkfs.ext4 "/dev/${disk}3"
@@ -53,10 +53,9 @@
         "Intel") microcode="intel-ucode" ;;
     esac
     pacstrap -K /mnt base linux linux-firmware grub efibootmgr networkmanager $microcode
-    read -p "Debug: pacstrap"
     genfstab -U /mnt >> /mnt/etc/fstab
-    arch-chroot /mnt
-    read -p "Debug: Settings"
+    nano /mnt/etc/fstab
+    (
     local getsubzones=()
     local subzones=()
     zone=$(whiptail --title "Time Zone" --menu "Select continent:" 25 50 11 "Africa" "" "America" "" "Antarctica" "" "Asia" "" "Australia" "" "Europe" "" 3>&1 1>&2 2>&3)
@@ -85,3 +84,4 @@
     read -p "Debug: GRUB"
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
     grub-mkconfig -o /boot/grub/grub.cfg
+    ) | arch-chroot /mnt

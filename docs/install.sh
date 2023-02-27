@@ -78,7 +78,7 @@
         subzones+=($i "")
     done
     subzone=$(whiptail --title "Time Zone" --menu "Select city:" 25 50 11 "${subzones[@]}" 3>&1 1>&2 2>&3)
-    ln -sf mnt/usr/share/zoneinfo/${zone}/${subzone} mnt/etc/localtime
+    ln -sf /mnt/usr/share/zoneinfo/${zone}/${subzone} /mnt/etc/localtime
     arch-chroot /mnt hwclock --systohc
     read -p "debug"
     # 3.4 Localization

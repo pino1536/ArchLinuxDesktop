@@ -39,9 +39,9 @@
             mkfs.fat -F 32 "/dev/${disk}1"
             mkswap "/dev/${disk}2"
             mkfs.ext4 "/dev/${disk}3"
+            mount /dev/${disk}3 /mnt
             mount --mkdir /dev/${disk}1 /mnt/boot
             swapon /dev/${disk}2
-            mount /dev/${disk}3 /mnt
         ;;
         "DualBoot")
         ;;

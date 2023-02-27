@@ -5,10 +5,10 @@
         disks+=(${i})
     done
     disk=$(whiptail --title "Select Disk" --menu "Select disk device:" 25 50 11 "${disks[@]}" 3>&1 1>&2 2>&3)
-    partitiontype=$(whiptail --title "Disk Partition and Formating" --menu "Default Partition Layout:\nEFI (500mb), Swap (4gb), Root (?)" 25 50 11 "FullWipe" "Wipe Disk, default Partitions" "SecondOS" "Use the free space" "Custom" "The Command Line way." 3>&1 1>&2 2>&3)
+    partitiontype=$(whiptail --title "Disk Partition and Formating" --menu "Default Partition Layout:\nEFI (500mb), Swap (4gb), Root (?)" 25 50 11 "Full Wipe" "Wipe Disk, default Partitions" "Second OS" "Use the free space." "Custom" "The Command Line way." 3>&1 1>&2 2>&3)
 
     case ${partitiontype} in
-        "FullWipe")
+        "Full Wipe")
             (
                 echo g
                 echo n
@@ -45,7 +45,7 @@
             mount --mkdir /dev/${disk}1 /mnt/boot
             swapon /dev/${disk}2
         ;;
-        "SecondOS")
+        "Second OS")
             (
                 echo n
                 echo  
@@ -63,11 +63,12 @@
                 echo 23
                 echo w
             ) | fdisk --wipe-partitions always /dev/${disk}
-
+            read -p "test"
             local partitions=()
             for i in ${(lsblk /dev/${disk} --noheadings --output NAME,SIZE -l):1}; do
                 partitions+=(${i})
             done
+            read -p "test"
             pefi=$(whiptail --title "Select Partition" --menu "Select disk device:" 25 50 11 "${partitions[@]}" 3>&1 1>&2 2>&3)
             proot=$(whiptail --title "Select Partition" --menu "Select disk device:" 25 50 11 "${partitions[@]}" 3>&1 1>&2 2>&3)
             pswap=$(whiptail --title "Select Partition" --menu "Select disk device:" 25 50 11 "${partitions[@]}" 3>&1 1>&2 2>&3)

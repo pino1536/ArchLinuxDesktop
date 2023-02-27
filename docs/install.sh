@@ -18,6 +18,7 @@
                 echo +512M
                 echo t
                 echo  
+                echo 1
                 echo n
                 echo  
                 echo  

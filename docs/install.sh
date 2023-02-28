@@ -20,8 +20,7 @@ then
     echo w
     ) | fdisk --wipe always --wipe-partitions always /dev/${disk}
     partitionefi=($(fdisk --list -o Device,Type /dev/${disk} | grep "EFI System"))
-    partitionefi=${partitionefi[0]}
-    mkfs.fat -F 32 $partitionefi
+    mkfs.fat -F 32 ${partitionefi[0]}
 fi
 read -p "test"
 (
@@ -42,8 +41,9 @@ read -p "test"
     echo w
 ) | fdisk --wipe-partitions always /dev/${disk}
 read -p "test"
+clear
 fdisk --list /dev/${disk}
-echo "Please enter the EFI Partition:"
+echo "\nPlease enter the EFI Partition:"
 read -p "/dev/" partitionefi
 partitionswap=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux swap"))
 partitionroot=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux root"))
@@ -54,7 +54,7 @@ mkfs.ext4 ${partitionroot[0]}
 read -p "test"
 # 1.11 Mount the file systems
 mount ${partitionroot[0]} /mnt
-mount --mkdir ${partitionefi} /mnt/boot
+mount --mkdir /dev/${partitionefi} /mnt/boot
 swapon ${partitionswap[0]}
 read -p "test"
 # 2.1 Select the mirrors

@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 # 1.9 Partition the disks
-disks=()
-partitions=()
 for i in $(lsblk /dev/hd* /dev/sd* /dev/nvme* --nodeps --scsi --noheadings --output NAME,SIZE);
 do
     disks+=(${i})
@@ -29,7 +27,7 @@ then
     echo 1
     echo w
     ) | fdisk --wipe always --wipe-partitions always /dev/${disk}
-    partitionefi=($(fdisk /dev/${disk} --list -p Device,Type | grep "EFI System"))
+    partitionefi=($(fdisk --list -o Device,Type /dev/${disk} | grep "EFI System"))
     read -p "${partitionefi[1]}"
     mkfs.fat -F 32 ${partitionefi[1]}
 fi
@@ -52,9 +50,9 @@ read -p "debug"
     echo w
 ) | fdisk --wipe-partitions always /dev/${disk}
 
-partitionefi=($(fdisk /dev/${disk} --list -p Device,Type | grep "EFI System"))
-partitionswap=($(fdisk /dev/${disk} --list -p Device,Type | grep "Linux swap"))
-partitionroot=($(fdisk /dev/${disk} --list -p Device,Type | grep "Linux root"))
+partitionefi=($(fdisk --list -o Device,Type /dev/${disk} | grep "EFI System"))
+partitionswap=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux swap"))
+partitionroot=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux root"))
 read -p "${partitionefi[1]}"
 read -p "${partitionswap[1]}"
 read -p "${partitionroot[1]}"

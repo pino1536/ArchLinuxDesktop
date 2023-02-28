@@ -41,8 +41,7 @@ fi
     echo w
 ) | fdisk --wipe-partitions always /dev/${disk}
 
-efimessage=$(fdisk --list /dev/${disk})
-partitionefi=$(whiptail --title "EFI Partition" --inputbox "$efimessage" 25 50 3>&1 1>&2 2>&3)
+partitionefi=$(whiptail --title "EFI Partition" --inputbox "$(fdisk --list -o Device,Type /dev/${disk} | grep "/dev/")" 25 50 3>&1 1>&2 2>&3)
 read -p "$partitionefi"
 partitionswap=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux swap"))
 partitionroot=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux root"))

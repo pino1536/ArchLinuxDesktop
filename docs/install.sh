@@ -43,8 +43,8 @@ read -p "test"
 ) | fdisk --wipe-partitions always /dev/${disk}
 read -p "test"
 fdisk --list /dev/${disk}
-echo "Please enter the EFI Partition (Example: /dev/sda1)\n"
-read partitionefi
+echo "Please enter the EFI Partition:"
+read -p "/dev/" partitionefi
 partitionswap=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux swap"))
 partitionroot=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux root"))
 read -p "test"

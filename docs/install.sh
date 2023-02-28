@@ -20,7 +20,6 @@ then
     echo w
     ) | fdisk --wipe always --wipe-partitions always /dev/${disk}
     partitionefi=($(fdisk --list -o Device,Type /dev/${disk} | grep "EFI System"))
-    read -p "${partitionefi[0]}"
     mkfs.fat -F 32 ${partitionefi[0]}
 fi
 
@@ -42,7 +41,9 @@ fi
     echo w
 ) | fdisk --wipe-partitions always /dev/${disk}
 
-partitionefi=($(fdisk --list -o Device,Type /dev/${disk} | grep "EFI System"))
+efimessage=$(fdisk --list /dev/${disk})
+partitionefi=$(whiptail --title "EFI Partition" --inputbox "$efimessage" 25 50 3>&1 1>&2 2>&3)
+read -p "$partitionefi"
 partitionswap=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux swap"))
 partitionroot=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux root"))
 
@@ -65,7 +66,6 @@ case ${cpu} in
     "AMD") microcode="amd-ucode" ;;
     "Intel") microcode="intel-ucode" ;;
 esac
-
 pacstrap -K /mnt base linux linux-firmware grub efibootmgr networkmanager ${microcode}
 
 # 3.1 Configure the system

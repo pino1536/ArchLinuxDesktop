@@ -58,8 +58,7 @@ mount --mkdir /dev/${partitionefi} /mnt/boot
 swapon ${partitionswap[0]}
 read -p "test"
 # 2.1 Select the mirrors
-reflector --latest 20 --protocol https --save /etc/pacman.d/mirrorlist
-read -p "test"
+
 # 2.2 Install essential packages
 cpu=$(whiptail --title "GPU" --menu "Select CPU:" 25 50 11 "AMD" "" "Intel" "" 3>&1 1>&2 2>&3)
 local microcode=""
@@ -110,4 +109,6 @@ read -p "test"
 # 3.8 Boot loader
 arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=boot --bootloader-id=GRUB
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+read -p "test"
+umount -R /mnt
 read -p "test"

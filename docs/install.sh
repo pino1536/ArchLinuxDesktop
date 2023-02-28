@@ -5,19 +5,11 @@ do
     disks+=(${i})
 done
 disk=$(whiptail --title "Select Disk" --menu "Select disk device:" 25 50 11 "${disks[@]}" 3>&1 1>&2 2>&3)
-fdisk --wipe-partitions always /dev/${disk}
 
-if (whiptail --title "Disk Partition" --yesno "Wipe Disk?" 25 50)
+if (whiptail --title "Disk Partition" --yesno "Wipe Disk and default Partitions?" 25 50)
 then
     (
     echo g
-    echo w
-    ) | fdisk --wipe always --wipe-partitions always /dev/${disk}
-fi
-
-if (whiptail --title "Disk Partition" --yesno "Create EFI Boot Partition?" 25 50)
-then
-    (
     echo n
     echo  
     echo  
@@ -31,7 +23,7 @@ then
     read -p "${partitionefi[0]}"
     mkfs.fat -F 32 ${partitionefi[0]}
 fi
-read -p "debug"
+
 (
     echo n
     echo  
@@ -53,18 +45,15 @@ read -p "debug"
 partitionefi=($(fdisk --list -o Device,Type /dev/${disk} | grep "EFI System"))
 partitionswap=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux swap"))
 partitionroot=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux root"))
-read -p "${partitionefi[0]}"
-read -p "${partitionswap[0]}"
-read -p "${partitionroot[0]}"
 
 # 1.10 Format the partitions
-mkswap ${partitionswap[1]}
-mkfs.ext4 ${partitionroot[1]}
+mkswap ${partitionswap[0]}
+mkfs.ext4 ${partitionroot[0]}
 
 # 1.11 Mount the file systems
-mount ${partitionroot[1]} /mnt
-mount --mkdir ${partitionefi[1]} /mnt/boot
-swapon ${partitionswap[1]}
+mount ${partitionroot[0]} /mnt
+mount --mkdir ${partitionefi[0]} /mnt/boot
+swapon ${partitionswap[0]}
 
 # 2.1 Select the mirrors
 reflector --latest 20 --protocol https --save /etc/pacman.d/mirrorlist

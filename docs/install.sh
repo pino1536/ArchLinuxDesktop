@@ -28,8 +28,8 @@ then
     echo w
     ) | fdisk --wipe always --wipe-partitions always /dev/${disk}
     partitionefi=($(fdisk --list -o Device,Type /dev/${disk} | grep "EFI System"))
-    read -p "${partitionefi[1]}"
-    mkfs.fat -F 32 ${partitionefi[1]}
+    read -p "${partitionefi[0]}"
+    mkfs.fat -F 32 ${partitionefi[0]}
 fi
 read -p "debug"
 (
@@ -53,9 +53,9 @@ read -p "debug"
 partitionefi=($(fdisk --list -o Device,Type /dev/${disk} | grep "EFI System"))
 partitionswap=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux swap"))
 partitionroot=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux root"))
-read -p "${partitionefi[1]}"
-read -p "${partitionswap[1]}"
-read -p "${partitionroot[1]}"
+read -p "${partitionefi[0]}"
+read -p "${partitionswap[0]}"
+read -p "${partitionroot[0]}"
 
 # 1.10 Format the partitions
 mkswap ${partitionswap[1]}

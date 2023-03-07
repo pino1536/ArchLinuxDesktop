@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 1.9 Partition the disks
-for i in $(lsblk /dev/hd* /dev/sd* /dev/nvme* --nodeps --scsi --noheadings --output NAME,SIZE);
+for i in $(lsblk --nodeps --noheadings --include 8,259 --output NAME,SIZE);
 do
     disks+=(${i})
 done
@@ -18,7 +18,7 @@ then
     echo  
     echo 1
     echo w
-    ) | fdisk --wipe always --wipe-partitions always /dev/${disk}
+    ) | fdisk --noauto-pt --wipe always --wipe-partitions always /dev/${disk}
     partitionefi=($(fdisk --list -o Device,Type /dev/${disk} | grep "EFI System"))
     mkfs.fat -F 32 ${partitionefi[0]}
 fi
@@ -43,7 +43,8 @@ read -p "test"
 read -p "test"
 clear
 fdisk --list /dev/${disk}
-echo "\nPlease enter the EFI Partition:"
+echo  
+echo "Please enter the EFI Partition:"
 read -p "/dev/" partitionefi
 partitionswap=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux swap"))
 partitionroot=($(fdisk --list -o Device,Type /dev/${disk} | grep "Linux root"))
@@ -66,7 +67,7 @@ case ${cpu} in
     "AMD") microcode="amd-ucode" ;;
     "Intel") microcode="intel-ucode" ;;
 esac
-pacstrap -K /mnt base linux linux-firmware grub efibootmgr networkmanager ${microcode}
+pacstrap -K /mnt base linux linux-firmware networkmanager ${microcode}
 read -p "test"
 # 3.1 Configure the system
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -91,9 +92,8 @@ keymap=$(whiptail --title "Choose Your Keyboard" --menu "Set the Keyboard Layout
 echo "KEYMAP=${keymap}" > /mnt/etc/vconsole.conf
 read -p "test"
 # 3.5 Network configuration
-hostname=$(whiptail --title "Hostname" --inputbox "What is your new hostname?" 25 50 3>&1 1>&2 2>&3)
-echo ${hostname} > /mnt/etc/hostname
-echo -ne "127.0.0.1\tlocalhost\n::1\t\tlocalhost\n127.0.1.1\t${hostname}.localdomain ${hostname}" > /mnt/etc/hosts
+echo linux > /mnt/etc/hostname
+echo -ne "127.0.0.1\tlocalhost\n::1\t\tlocalhost\n127.0.1.1\tlinux.localdomain linux" > /mnt/etc/hosts
 arch-chroot /mnt systemctl enable NetworkManager.service
 read -p "test"
 # 3.6 Initramfs
@@ -107,8 +107,11 @@ userpw=$(whiptail --title "Getting user password" --passwordbox "Please enter yo
 echo -e "${userpw}\n${userpw}" | arch-chroot /mnt passwd ${user}
 read -p "test"
 # 3.8 Boot loader
-arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=boot --bootloader-id=GRUB
-arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+partitionrootuuid=($(fdisk --list -o UUID,Type /dev/${disk} | grep "Linux root"))
 read -p "test"
-umount -R /mnt
+arch-chroot /mnt bootctl install
+read -p "test"
+echo -ne "title\tArch Linux\nlinux\t/vmlinuz-linux\ninitrd\t/${microcode}.img\ninitrd\t/initramfs-linux.img\noptions\troot=UUID=${partitionrootuuid[0]} rw" > /mnt/boot/loader/entries/arch.conf
+read -p "test"
+# umount -R /mnt
 read -p "test"

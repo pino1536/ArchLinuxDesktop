@@ -106,12 +106,3 @@ arch-chroot /mnt useradd -m -G wheel ${user}
 userpw=$(whiptail --title "Getting user password" --passwordbox "Please enter your new user's password: " 25 50 3>&1 1>&2 2>&3)
 echo -e "${userpw}\n${userpw}" | arch-chroot /mnt passwd ${user}
 read -p "test"
-# 3.8 Boot loader
-partitionrootuuid=($(fdisk --list -o UUID,Type /dev/${disk} | grep "Linux root"))
-read -p "test"
-arch-chroot /mnt bootctl install
-read -p "test"
-echo -ne "title\tArch Linux\nlinux\t/vmlinuz-linux\ninitrd\t/${microcode}.img\ninitrd\t/initramfs-linux.img\noptions\troot=UUID=${partitionrootuuid[0]} rw" > /mnt/boot/loader/entries/arch.conf
-read -p "test"
-# umount -R /mnt
-read -p "test"
